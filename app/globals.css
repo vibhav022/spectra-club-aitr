@@ -1,0 +1,170 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Modern dark system: Inter, glass surfaces, soft aurora light, one cool accent used sparingly. */
+@layer base {
+  html { scroll-behavior: smooth; scroll-padding-top: 5rem; background: var(--color-bg-deep); }
+  body {
+    background: var(--color-bg-deep); color: var(--color-ink-soft); font-family: var(--font-body);
+    font-size: 1rem; line-height: 1.7; overflow-x: hidden; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3 { color: var(--color-ink); font-family: var(--font-body); font-weight: 600; letter-spacing: -0.03em; }
+  h1 { font-size: var(--fs-h1); line-height: 1.02; letter-spacing: -0.045em; }
+  h2 { font-size: var(--fs-h2); line-height: 1.12; }
+  h3 { font-size: var(--fs-h3); line-height: 1.3; letter-spacing: -0.015em; }
+  ::selection { background: #5EE0D0; color: #04080A; }
+  :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+}
+
+@layer components {
+  .eyebrow { display: inline-flex; align-items: center; gap: 0.6rem; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.16em; color: var(--color-accent-gold); }
+  .eyebrow::before { background: var(--color-accent-2); box-shadow: 0 0 12px rgba(233, 163, 107, 0.7); }
+  .eyebrow::before { content: ""; width: 0.4rem; height: 0.4rem; border-radius: 999px; background: linear-gradient(135deg, var(--color-accent), var(--color-accent-2)); box-shadow: 0 0 12px rgba(94, 224, 208, 0.7); }
+  .text-grad { background: linear-gradient(180deg, #F5F5F7 30%, #5EE0D0 62%, #E9A36B 115%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .text-accent-grad { background: linear-gradient(90deg, var(--color-accent), var(--color-accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  @media (forced-colors: active) { .text-grad, .text-accent-grad { background: none; color: CanvasText; } }
+  .glass { background-color: #0C1214; background: linear-gradient(180deg, rgba(94, 224, 208, 0.07), rgba(12, 18, 20, 0.55)); border: 1px solid rgba(94, 224, 208, 0.14); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); transition: border-color 0.25s, transform 0.25s; }
+  .glass:hover { border-color: rgba(94, 224, 208, 0.32); }
+
+  /* ---- Shared card interaction (components/Spot.tsx) ----
+     .spot-wrap receives the pointer and never moves, so lifting the card can't make the hover flicker at its bottom edge.
+     The inner .spot carries the lift, tilt, lighting and border ring. Optional hooks: .spot-img, .spot-shift, .spot-shift-sm, .spot-arrow. */
+  .spot-wrap { height: 100%; }
+  .spot { position: relative; isolation: isolate; overflow: hidden; transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s; }
+  .spot::before { content: ""; position: absolute; inset: 0; z-index: -1; opacity: 0; transition: opacity 0.3s; background: radial-gradient(420px circle at var(--x, 50%) var(--y, 50%), rgba(94, 224, 208, 0.16), transparent 60%); pointer-events: none; }
+  /* Teal border light that follows the cursor: a 1px ring masked out of the same accent gradient. */
+  .spot::after { content: ""; position: absolute; inset: 0; z-index: 1; padding: 1px; border-radius: inherit; opacity: 0; transition: opacity 0.3s; pointer-events: none; background: radial-gradient(240px circle at var(--x, 50%) var(--y, 50%), rgba(94, 224, 208, 0.55), transparent 65%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; }
+  .spot-img { transition: scale 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+  .spot-shift, .spot-shift-sm, .spot-arrow { transition: translate 0.3s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s; }
+
+  /* Mouse with hover: elevation, small 3D tilt (angles are set by Spot.tsx), image zoom, content drift, arrow. */
+  @media (hover: hover) and (pointer: fine) {
+    .spot-wrap:hover > .spot::before, .spot-wrap:hover > .spot::after, .spot-wrap:focus-within > .spot::after { opacity: 1; }
+    .spot-wrap:hover > .spot.glass { border-color: rgba(94, 224, 208, 0.32); }
+    .spot-wrap:hover > .spot[data-lift] { --lift: -5px; }
+    .spot-wrap:hover > .spot:is([data-lift], [data-tilt]) { transform: perspective(900px) translate3d(0, var(--lift, 0px), 0) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); }
+    .spot-wrap:hover > .spot .spot-img { scale: 1.04; }
+    .spot-wrap:hover > .spot .spot-shift { translate: 0 -3px; }
+    .spot-wrap:hover > .spot .spot-shift-sm { translate: 0 -2px; }
+    .spot-wrap:hover > .spot .spot-arrow { translate: 3px -3px; }
+  }
+  /* Touch: no sticky hover. Quick tap feedback instead; every action stays reachable without hover. */
+  @media (hover: none), (pointer: coarse) {
+    .spot.glass:hover { border-color: rgba(94, 224, 208, 0.14); }
+    .spot[data-tap] { transition-duration: 0.12s; }
+    .spot-wrap:active > .spot[data-tap] { transform: scale(0.985); }
+    .spot-wrap:active > .spot.glass { border-color: rgba(94, 224, 208, 0.32); }
+    .spot-wrap:active > .spot::after { opacity: 1; }
+    .spot-wrap:active > .spot .spot-img { scale: 1.02; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spot-wrap > .spot, .spot-wrap:hover > .spot, .spot-wrap:active > .spot { transform: none !important; }
+    .spot-wrap .spot-img, .spot-wrap .spot-shift, .spot-wrap .spot-shift-sm, .spot-wrap .spot-arrow { scale: none !important; translate: none !important; }
+  }
+
+  .icon-tile { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 0.8rem; color: #DDF6F2; background: linear-gradient(135deg, rgba(94, 224, 208, 0.2), rgba(233, 163, 107, 0.07)); border: 1px solid rgba(255, 255, 255, 0.1); }
+  .badge { display: inline-flex; align-items: center; gap: 0.6rem; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.04); padding: 0.4rem 0.95rem; font-size: 0.8rem; color: var(--color-ink-soft); backdrop-filter: blur(10px); }
+  .badge-dot { width: 0.45rem; height: 0.45rem; border-radius: 999px; background: #DDF6F2; box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.15); }
+  .aurora { background: radial-gradient(55% 45% at 78% 18%, rgba(94, 224, 208, 0.24), transparent 70%), radial-gradient(40% 35% at 12% 80%, rgba(233, 163, 107, 0.12), transparent 70%); }
+  .dots { background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px); background-size: 28px 28px; -webkit-mask-image: radial-gradient(ellipse 70% 65% at 55% 35%, #000, transparent 75%); mask-image: radial-gradient(ellipse 70% 65% at 55% 35%, #000, transparent 75%); }
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .float { animation: float 7s ease-in-out infinite alternate; animation-delay: var(--d, 0s); }
+  .container-x { max-width: var(--container-max); margin-inline: auto; padding-inline: var(--gutter); }
+  .section-y { padding-block: var(--section-pad); }
+  .script { font-family: var(--font-body); font-style: italic; color: var(--color-ink-soft); }
+  .text-gradient { background: linear-gradient(180deg, #F5F5F7 30%, #5EE0D0 62%, #E9A36B 115%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 44px; padding: 0.65rem 1.4rem; border-radius: var(--radius-button); font-size: 0.9375rem; font-weight: 500; transition: background-color 0.2s, border-color 0.2s, color 0.2s, transform 0.2s, box-shadow 0.2s; }
+  .btn-primary { background: var(--color-primary); color: var(--color-bg-deep); font-weight: 600; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5) inset, 0 10px 34px -10px rgba(94, 224, 208, 0.7); }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5) inset, 0 14px 40px -8px rgba(94, 224, 208, 0.85); }
+  .btn-primary:active { transform: none; background: #E6E6E8; }
+  .btn-ghost { border: 1px solid rgba(255, 255, 255, 0.14); color: var(--color-ink); background: rgba(255, 255, 255, 0.04); backdrop-filter: blur(10px); }
+  .btn-ghost:hover { border-color: rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.08); }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .hero-in { animation: hero-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0s); }
+
+  /* Hero heading: each word rises from behind its own clipping mask. The mask has a little vertical/horizontal padding (cancelled by negative margin) so descenders and tight tracking are never cut. */
+  .hero-word { display: inline-block; clip-path: inset(0); vertical-align: top; padding: 0.12em 0.06em; margin: -0.12em -0.06em; }
+  .hero-word-in { display: inline-block; animation: hero-word 0.95s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--base, 0.15s) + var(--i, 0) * 0.15s); }
+  @media (max-width: 1023.98px) { .hero-word-in { animation-duration: 0.65s; animation-delay: calc(var(--base, 0.1s) + var(--i, 0) * 0.09s); } }
+
+  /* ---- Logo strip ---- */
+  .marquee { display: flex; overflow: hidden; user-select: none; }
+  .marquee-track { display: flex; flex-shrink: 0; min-width: 100%; align-items: center; justify-content: space-around; gap: 2.5rem; padding-right: 2.5rem; animation: marquee 50s linear infinite; }
+  .logo-marquee { -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+  .logo-track { gap: 5rem; padding-right: 5rem; }
+  .logo-item { opacity: 0.45; transition: opacity 0.25s; }
+  .logo-marquee:hover .marquee-track { animation-play-state: paused; }
+  .logo-item:hover { opacity: 0.9; }
+}
+
+@keyframes hero-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes hero-word { from { transform: translateY(105%); } to { transform: none; } }
+@keyframes float { from { transform: translateY(-6px); } to { transform: translateY(8px); } }
+@keyframes marquee { to { transform: translateX(-100%); } }
+/* Page transition: app/template.tsx remounts on every navigation, which replays this fade. Opacity only, so no layout shift and no stacking-context side effects. */
+@keyframes page-in { from { opacity: 0; } to { opacity: 1; } }
+.page-fade { animation: page-in 0.4s ease-out both; }
+/* Form success checkmark: ring draws, then the tick. pathLength=1 on the SVG shapes keeps the dash maths unit-free. */
+@keyframes check-pop { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: none; } }
+@keyframes check-draw { to { stroke-dashoffset: 0; } }
+.check-badge { animation: check-pop 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.check-ring, .check-tick { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.check-ring { animation: check-draw 0.55s ease-out 0.1s forwards; }
+.check-tick { animation: check-draw 0.35s ease-out 0.55s forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .page-fade, .check-badge { animation: none; }
+  .check-ring, .check-tick { animation: none; stroke-dashoffset: 0; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
+  .marquee-track { animation: none; }
+  .hero-in, .hero-word-in, .float { animation: none; }
+  .btn:hover { transform: none; }
+  .marquee { overflow-x: auto; }
+}
+
+/* Animated video background (VideoBackground). Sits behind everything; body goes transparent so it shows through (html keeps the dark base). */
+body { background: transparent; }
+.video-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--color-bg-deep); }
+.video-bg video { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; }
+.video-bg::after { content: ""; position: absolute; inset: 0; background: rgba(4, 8, 10, 0.15); }
+@media (prefers-reduced-motion: reduce) { .video-bg video { display: none; } }
+
+
+
+
+
+/* ---- Scroll-motion support (Reveal, RevealImage, SectionHead, section seams) ---- */
+
+/* Failsafe: everything the reveals hide carries data-reveal. If the motion features have not loaded after 3s (script blocked,
+   offline, no JS) it fades into view anyway, so content can never stay invisible. <Providers/> adds .motion-ready on success. */
+@keyframes reveal-failsafe { to { opacity: 1; transform: none; clip-path: none; } }
+html:not(.motion-ready) [data-reveal] { animation: reveal-failsafe 0.4s ease 3s forwards; }
+
+/* Image entrance for above-the-fold priority images (event poster): CSS only, so it never waits for JS. Same easing as RevealImage.
+   Uses the independent `scale` property so it cannot override an inline rotate. */
+@keyframes img-in { from { opacity: 0; clip-path: inset(5% 5% 5% 5%); scale: 1.06; } to { opacity: 1; clip-path: inset(0% 0% 0% 0%); scale: 1; } }
+.img-reveal-in { animation: img-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both; }
+@media (max-width: 767px) { .img-reveal-in { animation-duration: 0.65s; animation-delay: 0.05s; } }
+
+/* Section seams: a hairline of the existing accent plus a soft glow at the top of each page section, so sections read as one
+   continuous page. Where scroll-driven animation exists the seam fades up as the section arrives; elsewhere it is simply static. */
+.page-fade > section:not(#home) { position: relative; }
+.page-fade > section:not(#home)::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 7rem; pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, rgba(94, 224, 208, 0.3) 50%, transparent) top / 100% 1px no-repeat,
+    radial-gradient(60% 100% at 50% 0%, rgba(94, 224, 208, 0.045), transparent);
+}
+@keyframes seam-in { from { opacity: 0; } to { opacity: 1; } }
+@supports (animation-timeline: view()) {
+  .page-fade > section:not(#home)::before { opacity: 0; animation: seam-in linear both; animation-timeline: view(); animation-range: entry 0% entry 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .img-reveal-in { animation: none; }
+  .page-fade > section:not(#home)::before { animation: none; opacity: 1; }
+}

@@ -1,0 +1,48 @@
+/* Single source of truth for brand tokens. Values derive from the club posters. */
+@theme static {
+  --color-bg-deep: #04080A;
+  --color-bg-base: #070C0E;
+  --color-surface: #0C1214;
+  --color-primary: #F5F5F7;
+  --color-primary-dim: #C4DCD9;
+  --color-primary-glow: #5EE0D0;
+  --color-accent-gold: #7FE8DA;
+  --color-accent-teal: #E9A36B;
+  --color-ink: #F5F5F7;
+  --color-ink-soft: #C3D0CF;
+  --color-sand: #E6E6E8;
+  --color-accent: #5EE0D0;
+  --color-accent-2: #E9A36B;
+  --color-danger: #e74c3c;
+  /* Lighter tint for error TEXT: #e74c3c is only 3.7:1 on --color-surface, below AA. */
+  --color-danger-text: #ff8a7a;
+
+  --font-display: "Lilita One", "Arial Black", sans-serif;
+  --font-headline: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-script: "Great Vibes", "Snell Roundhand", cursive;
+  --font-body: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --radius-card: 22px;
+  --radius-button: 999px;
+  --radius-image: 12px;
+  --radius-poster: 12px;
+
+  --shadow-depth: none;
+  --shadow-green: none;
+  --shadow-gold: none;
+
+  --breakpoint-xs: 375px;
+  --breakpoint-3xl: 1536px;
+}
+
+:root {
+  --border-subtle: 1px solid rgba(94, 224, 208, 0.12);
+  --border-hover: 1px solid rgba(94, 224, 208, 0.5);
+  --container-max: 1120px;
+  --gutter: clamp(1.25rem, 4vw, 2.5rem);
+  --section-pad: clamp(3.5rem, 9vw, 7.5rem);
+  --fs-h1: clamp(2.9rem, 7.2vw, 5.75rem);
+  --fs-h2: clamp(1.75rem, 3.4vw, 2.75rem);
+  --fs-h3: clamp(1.1rem, 1.6vw, 1.25rem);
+  --fs-stat: clamp(2.25rem, 5vw, 3.5rem);
+}

@@ -1,0 +1,27 @@
+# Cloudflare Pages project: spectra-cse-club  ->  https://spectra-cse-club.pages.dev
+name = "spectra-cse-club"
+pages_build_output_dir = "out"            # Next.js static export folder
+compatibility_date = "2025-09-01"
+
+[vars]
+# Extra origins (comma separated) allowed to call the admin API. The site's own origin is always allowed,
+# so you only need this if you add a separate frontend domain. Leave empty normally.
+ALLOWED_ORIGINS = ""
+MAX_IMAGE_MB = "10"
+MAX_VIDEO_MB = "100"                      # lower this if your ImageKit plan has a smaller upload limit
+SESSION_DAYS = "7"
+# ImageKit (public values only). The PRIVATE key is a secret: never write it here.
+IMAGEKIT_URL_ENDPOINT = "https://ik.imagekit.io/YOUR_IMAGEKIT_ID"
+IMAGEKIT_PUBLIC_KEY = "public_xxxxxxxxxxxxxxxxxxxxxxxxxxx="
+
+ 
+ 
+    # printed by: npx wrangler d1 create spectra-db
+migrations_dir = "migrations"
+
+preview_database_id = "DB"
+
+[[d1_databases]]
+binding = "spectra_db"
+database_name = "spectra-db"
+database_id = "ad0b7293-e779-4799-9e09-fe335eca689b"
