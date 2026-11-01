@@ -52,12 +52,54 @@ function makeVariants(wide: boolean, reduce: boolean): { item: Variants; media: 
 }
 
 /** Grid tile. Photos use their thumbnail when there is one; videos show their poster. Missing or failed media falls back to the designed tile. */
+
 function Thumb({ it }: { it: GalleryItem }) {
   const [failed, setFailed] = useState(false);
-  const src = it.kind === "video" ? it.thumb : (it.thumb ?? it.src);
-  if (src && !failed) return <Image src={src} alt="" width={it.width} height={it.height} sizes="(min-width:1024px) 33vw, 50vw" loading="lazy" onError={() => setFailed(true)} className="spot-img h-auto w-full" />;
-  return <div aria-hidden="true" style={{ aspectRatio: `${it.width}/${it.height}` }} className="spot-img flex w-full items-center justify-center bg-gradient-to-br from-surface to-bg-deep"><Slot /></div>;
+  const isVideo = it.kind === "video";
+
+  if (failed || !it.src) {
+    return (
+      <div
+        aria-hidden="true"
+        style={{ aspectRatio: `${it.width}/${it.height}` }}
+        className="spot-img flex w-full items-center justify-center bg-gradient-to-br from-surface to-bg-deep"
+      >
+        <Slot />
+      </div>
+    );
+  }
+
+  if (isVideo) {
+    return (
+      <video
+        src={it.src}
+        muted
+        autoPlay
+        loop
+        playsInline
+        preload="auto"
+        controls={false}
+        aria-label={it.alt}
+        onError={() => setFailed(true)}
+        className="spot-img block h-auto w-full object-cover"
+      />
+    );
+  }
+
+  return (
+    <Image
+      src={it.thumb ?? it.src}
+      alt={it.alt}
+      width={it.width}
+      height={it.height}
+      sizes="(min-width:1024px) 33vw, 50vw"
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="spot-img h-auto w-full"
+    />
+  );
 }
+
 
 export function Gallery({ items, categories = DEFAULT_CATEGORIES, limit, asPage = false }: { items: GalleryItem[]; categories?: string[]; limit?: number; asPage?: boolean }) {
   const [filter, setFilter] = useState<Filter>(items.length ? "All" : "Recap");

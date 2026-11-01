@@ -11,8 +11,8 @@ MAX_IMAGE_MB = "10"
 MAX_VIDEO_MB = "100"                      # lower this if your ImageKit plan has a smaller upload limit
 SESSION_DAYS = "7"
 # ImageKit (public values only). The PRIVATE key is a secret: never write it here.
-IMAGEKIT_URL_ENDPOINT = "https://ik.imagekit.io/YOUR_IMAGEKIT_ID"
-IMAGEKIT_PUBLIC_KEY = "public_xxxxxxxxxxxxxxxxxxxxxxxxxxx="
+IMAGEKIT_URL_ENDPOINT = "https://ik.imagekit.io/kjts6sbcja"
+IMAGEKIT_PUBLIC_KEY = "public_UA0DCROYIkJsK5jHWht+cfik46U="
 
  
  
@@ -22,6 +22,6 @@ migrations_dir = "migrations"
 preview_database_id = "DB"
 
 [[d1_databases]]
-binding = "spectra_db"
+binding = "DB"
 database_name = "spectra-db"
 database_id = "ad0b7293-e779-4799-9e09-fe335eca689b"

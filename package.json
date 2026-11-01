@@ -22,7 +22,7 @@
     "admin:create:local": "tsx scripts/db/create-admin.ts --local",
     "admin:create:remote": "tsx scripts/db/create-admin.ts --remote",
     "preview": "npm run build && wrangler pages dev out",
-    "deploy": "npm run build && wrangler pages deploy out --project-name spectra-cse-club",
+    "deploy": "npm run build && wrangler pages deploy out --project-name spectra-cse-aitr",
     "test": "node --import tsx --test tests/unit.test.ts",
     "test:e2e": "node --import tsx tests/e2e.ts"
   },
