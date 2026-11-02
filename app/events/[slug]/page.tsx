@@ -69,11 +69,44 @@ export default async function EventPage({ params }: Props) {
               View on Instagram <ArrowUpRight className="h-4 w-4" aria-hidden="true" /><span className="sr-only"> (opens in new tab)</span>
             </a>
           </div>
-          <div>
-            {e.image
-              ? <Image src={e.image} alt={`${e.title} poster`} width={800} height={1000} priority sizes="(min-width:1024px) 30vw, 90vw" className="img-reveal-in h-auto w-full rounded-[var(--radius-poster)] border border-white/10" />
-              : <Poster label={`${e.title} poster`} className="img-reveal-in aspect-[16/10] w-full md:aspect-[4/5]" />}
-          </div>
+         
+{e.video ? (
+  <div className="relative mx-auto w-full max-w-[360px] aspect-[9/16] overflow-hidden rounded-[var(--radius-poster)] border border-white/10 bg-black lg:ml-auto lg:mr-0">
+
+    <video
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      poster={e.image}
+      disablePictureInPicture
+      controls={false}
+      aria-label={`${e.title} event highlights`}
+      className="absolute inset-0 h-full w-full object-contain"
+    >
+      <source src={e.video} type="video/mp4" />
+      Your browser does not support HTML video.
+    </video>
+
+  </div>
+) : e.image ? (
+  <Image
+    src={e.image}
+    alt={`${e.title} poster`}
+    width={800}
+    height={1000}
+    priority
+    sizes="(min-width:1024px) 30vw, 90vw"
+    className="img-reveal-in h-auto w-full rounded-[var(--radius-poster)] border border-white/10"
+  />
+) : (
+  <Poster
+    label={`${e.title} poster`}
+    className="img-reveal-in aspect-[16/10] w-full md:aspect-[4/5]"
+  />
+)}
+
         </div>
       </article>
 
