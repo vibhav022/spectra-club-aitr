@@ -50,12 +50,13 @@
 
 
 
+
 "use client";
 
 import { useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Play } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { useReducedMotion } from "framer-motion";
 
 import { PlaceholderBadge } from "./PlaceholderBadge";
@@ -159,10 +160,8 @@ export function EventCard({ event: e }: { event: Event }) {
 
           {/* Event content */}
           <div className="relative z-10 flex h-full flex-1 flex-col p-5 sm:p-7">
-
-            {/* Category and preview label */}
+            {/* Category and year */}
             <div className="spot-shift-sm flex flex-wrap items-center gap-2 text-xs">
-
               <span className="rounded-full border border-white/15 bg-black/35 px-3 py-1 font-medium text-ink-soft backdrop-blur-md">
                 {e.category}
               </span>
@@ -172,18 +171,10 @@ export function EventCard({ event: e }: { event: Event }) {
               )}
 
               <PlaceholderBadge show={e.isPlaceholder} />
-
-              {e.video && (
-                <span className="ml-auto hidden items-center gap-1.5 rounded-full border border-white/15 bg-black/35 px-3 py-1 text-ink-soft backdrop-blur-md sm:inline-flex">
-                  <Play className="h-3 w-3" fill="currentColor" />
-                  Preview on hover
-                </span>
-              )}
             </div>
 
             {/* Bottom content */}
             <div className="mt-auto pt-20">
-
               <h3 className="spot-shift text-xl text-ink sm:text-2xl">
                 {e.title}
               </h3>
@@ -194,7 +185,6 @@ export function EventCard({ event: e }: { event: Event }) {
 
               {/* Card actions */}
               <div className="mt-5 flex items-center justify-between gap-4 sm:mt-7">
-
                 <Link
                   href={`/events/${e.slug}/`}
                   className="inline-flex min-h-[44px] items-center gap-2 text-sm font-medium text-ink transition-colors hover:text-white"
@@ -225,7 +215,6 @@ export function EventCard({ event: e }: { event: Event }) {
                     ({e.title}, opens in new tab)
                   </span>
                 </a>
-
               </div>
             </div>
           </div>
