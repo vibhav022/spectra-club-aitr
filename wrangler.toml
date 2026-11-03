@@ -1,5 +1,6 @@
 # Cloudflare Pages project: spectra-cse-club  ->  https://spectra-cse-club.pages.dev
-name = "spectra-cse-club"
+ 
+name = "spectra-cse-aitr"
 pages_build_output_dir = "out"            # Next.js static export folder
 compatibility_date = "2025-09-01"
 

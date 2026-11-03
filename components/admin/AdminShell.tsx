@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarClock, GraduationCap, House, Images, LayoutDashboard, LogOut, Menu, UserCog, Users, X } from "lucide-react";
+import { CalendarClock, CalendarDays, GraduationCap, House, Images, LayoutDashboard, LogOut, Menu, UserCog, Users, X } from "lucide-react";
 import { LOGO } from "@/lib/logo";
 import { api, ApiError } from "@/lib/admin/api";
 import { Feedback, Loading, useToast } from "./ui";
@@ -18,6 +18,7 @@ const NAV = [
   { href: "/admin/faculty/", label: "Faculty", icon: GraduationCap },
   { href: "/admin/gallery/", label: "Gallery", icon: Images },
   { href: "/admin/event/", label: "Upcoming events", icon: CalendarClock },
+  { href: "/admin/catalogue-events/", label: "Event Catalogue", icon: CalendarDays },
   { href: "/admin/account/", label: "Account", icon: UserCog },
   { href: "/", label: "Home", icon: House },
 ];

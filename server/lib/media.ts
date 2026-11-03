@@ -42,7 +42,7 @@ export async function assertAttachable(env: Env, mediaId: string, kind: "image" 
   const used = await env.DB.prepare(
     `SELECT 1 AS x FROM team_members WHERE photo_media_id = ?1 AND NOT (?2 = 'team_members' AND id = ?3)
      UNION ALL SELECT 1 FROM faculty WHERE photo_media_id = ?1 AND NOT (?2 = 'faculty' AND id = ?3)
-     UNION ALL SELECT 1 FROM gallery_items WHERE (media_id = ?1 OR thumb_media_id = ?1) AND NOT (?2 = 'gallery_items' AND id = ?3) LIMIT 1`,
+     UNION ALL SELECT 1 FROM gallery_items WHERE (media_id = ?1 OR thumb_media_id = ?1) AND NOT (?2 = 'gallery_items' AND id = ?3) UNION ALL SELECT 1 FROM site_events WHERE (poster_media_id = ?1 OR video_media_id = ?1) AND NOT (?2 = 'site_events' AND id = ?3) LIMIT 1`,
   ).bind(mediaId, exceptTable ?? "", exceptId ?? "").first();
   if (used) throw new HttpError(409, "media_in_use", "That file is already used by another record.");
 }
@@ -57,12 +57,41 @@ export async function removeRemote(env: Env, key: string, fileId: string | null)
 export async function purgeMedia(env: Env, ids: (string | null | undefined)[]) {
   const list = [...new Set(ids.filter((x): x is string => !!x))];
   if (!list.length) return;
+
   const q = list.map(() => "?").join(",");
-  await env.DB.prepare(`UPDATE media SET status='deleting', updated_at=? WHERE id IN (${q})`).bind(nowSec(), ...list).run();
-  const rows = (await env.DB.prepare(`SELECT id, object_key, provider_file_id FROM media WHERE id IN (${q})`).bind(...list).all<{ id: string; object_key: string; provider_file_id: string | null }>()).results;
+
+  // Mark only media files that are not referenced by any record.
+  await env.DB.prepare(
+    `UPDATE media SET status='deleting', updated_at=?
+     WHERE id IN (${q})
+     AND NOT EXISTS (SELECT 1 FROM team_members t WHERE t.photo_media_id = media.id)
+     AND NOT EXISTS (SELECT 1 FROM faculty f WHERE f.photo_media_id = media.id)
+     AND NOT EXISTS (SELECT 1 FROM gallery_items g WHERE g.media_id = media.id OR g.thumb_media_id = media.id)
+     AND NOT EXISTS (SELECT 1 FROM site_events e WHERE e.poster_media_id = media.id OR e.video_media_id = media.id)`
+  ).bind(nowSec(), ...list).run();
+
+  const rows = (
+    await env.DB.prepare(
+      `SELECT id, object_key, provider_file_id FROM media
+       WHERE id IN (${q}) AND status = 'deleting'
+       AND NOT EXISTS (SELECT 1 FROM team_members t WHERE t.photo_media_id = media.id)
+       AND NOT EXISTS (SELECT 1 FROM faculty f WHERE f.photo_media_id = media.id)
+       AND NOT EXISTS (SELECT 1 FROM gallery_items g WHERE g.media_id = media.id OR g.thumb_media_id = media.id)
+       AND NOT EXISTS (SELECT 1 FROM site_events e WHERE e.poster_media_id = media.id OR e.video_media_id = media.id)`
+    ).bind(...list).all<{
+      id: string;
+      object_key: string;
+      provider_file_id: string | null;
+    }>()
+  ).results;
+
   for (const r of rows) {
-    try { await removeRemote(env, r.object_key, r.provider_file_id); await env.DB.prepare("DELETE FROM media WHERE id = ?").bind(r.id).run(); }
-    catch (e) { console.error("ImageKit delete failed, will retry in cleanup", r.object_key, e); }
+    try {
+      await removeRemote(env, r.object_key, r.provider_file_id);
+      await env.DB.prepare("DELETE FROM media WHERE id = ?").bind(r.id).run();
+    } catch (e) {
+      console.error("ImageKit delete failed, will retry in cleanup", r.object_key, e);
+    }
   }
 }
 
@@ -78,18 +107,27 @@ export async function maybeCleanup(env: Env, ctx: { waitUntil(p: Promise<unknown
 }
 
 /** Maintenance: abandoned uploads, never-attached files, and deletions that previously failed. */
+
 export async function cleanupMedia(env: Env) {
   const now = nowSec();
+
   const stale = await env.DB.prepare(
-    `SELECT id FROM media WHERE status = 'deleting'
+    `SELECT id FROM media
+     WHERE (
+       status = 'deleting'
        OR (status = 'pending' AND created_at < ?1)
-       OR (status = 'ready' AND created_at < ?2
-           AND NOT EXISTS (SELECT 1 FROM team_members t WHERE t.photo_media_id = media.id)
-           AND NOT EXISTS (SELECT 1 FROM faculty f WHERE f.photo_media_id = media.id)
-           AND NOT EXISTS (SELECT 1 FROM gallery_items g WHERE g.media_id = media.id OR g.thumb_media_id = media.id))`,
+       OR (status = 'ready' AND created_at < ?2)
+     )
+     AND NOT EXISTS (SELECT 1 FROM team_members t WHERE t.photo_media_id = media.id)
+     AND NOT EXISTS (SELECT 1 FROM faculty f WHERE f.photo_media_id = media.id)
+     AND NOT EXISTS (SELECT 1 FROM gallery_items g WHERE g.media_id = media.id OR g.thumb_media_id = media.id)
+     AND NOT EXISTS (SELECT 1 FROM site_events e WHERE e.poster_media_id = media.id OR e.video_media_id = media.id)`
   ).bind(now - 2 * 3600, now - 6 * 3600).all<{ id: string }>();
+
   await purgeMedia(env, stale.results.map((r) => r.id));
+
   await env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(now).run();
   await env.DB.prepare("DELETE FROM rate_limits WHERE window_start < ?").bind(now - 86400).run();
+
   return stale.results.length;
 }

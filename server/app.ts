@@ -9,6 +9,7 @@ import { team } from "./routes/team";
 import { faculty } from "./routes/faculty";
 import { gallery, categories } from "./routes/gallery";
 import { event } from "./routes/event";
+import { catalogueEvents, publicCatalogueEvents } from "./routes/catalogue-events";
 import { uploads } from "./routes/uploads";
 import { publicApi } from "./routes/public";
 import { summary } from "./routes/summary";
@@ -30,6 +31,7 @@ app.use("*", async (c, next) => {
 
 app.get("/health", async (c) => { await c.env.DB.prepare("SELECT 1").first(); return c.json({ ok: true }); });
 app.route("/public", publicApi);
+app.route("/public/events", publicCatalogueEvents);
 
 app.use("/auth/*", csrfGuard);
 app.route("/auth", auth);
@@ -42,6 +44,7 @@ admin.route("/faculty", faculty.admin);
 admin.route("/gallery", gallery);
 admin.route("/categories", categories);
 admin.route("/events", event);
+admin.route("/catalogue-events", catalogueEvents);
 admin.route("/uploads", uploads);
 admin.route("/summary", summary);
 app.route("/admin", admin);
