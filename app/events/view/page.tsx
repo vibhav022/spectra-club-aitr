@@ -234,23 +234,32 @@ console.log("EVENT API URL:", apiUrl(`/api/public/events/${encodeURIComponent(sl
               </div>
             )}
 
-            {outreach && (
+            {/* {outreach && (
               <p className="mt-8 border-l border-white/20 pl-5 text-ink">
                 Together, let&apos;s build a safer digital future for every
                 student.
               </p>
-            )}
+            )} */}
 
-            <a
-              href={event.instagramUrl ?? site.socials.instagram}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary mt-8"
-            >
-              View on Instagram
-              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only"> (opens in new tab)</span>
-            </a>
+            <div className="mt-8 flex flex-wrap gap-3">
+  <Link
+    href={`/gallery?event=${encodeURIComponent(event.slug)}`}
+    className="btn btn-primary"
+  >
+    View Event Photos
+  </Link>
+
+  <a
+    href={event.instagramUrl ?? site.socials.instagram}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="btn btn-ghost"
+  >
+    View on Instagram
+    <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+    <span className="sr-only"> (opens in new tab)</span>
+  </a>
+</div>
           </div>
 
           {event.video ? (

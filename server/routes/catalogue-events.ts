@@ -100,6 +100,8 @@ const categories = [
   "Community / Outreach",
   "Club Onboarding",
   "Tech",
+  "Sports",
+  "Literary",
 ] as const;
 
 const schema = z.object({

@@ -38,7 +38,9 @@ type Category =
   | "Cultural"
   | "Community / Outreach"
   | "Club Onboarding"
-  | "Tech";
+  | "Tech"
+  | "Sports"
+  | "Literary";
 
 type Wash = "magenta" | "blue" | "teal" | "green";
 
@@ -71,6 +73,8 @@ const CATEGORIES: Category[] = [
   "Community / Outreach",
   "Club Onboarding",
   "Tech",
+  "Sports",
+  "Literary",
 ];
 
 const WASHES: { value: Wash; label: string }[] = [

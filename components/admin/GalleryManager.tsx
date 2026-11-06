@@ -6,10 +6,14 @@ import { api, ApiError, fmtBytes, inspectFile, mediaUrl, uploadFile } from "@/li
 import { PageHead } from "./AdminShell";
 import { btnSmall, EmptyState, ErrorBox, Field, inputCls, Loading, Modal, Spinner, Toggle, useAdminData, useConfirm, useToast } from "./ui";
 
-interface Item { id: string; title: string; caption: string | null; categoryId: string; category: string; kind: "image" | "video"; src: string; thumb: string | null; sizeBytes: number; visible: boolean; width: number; height: number }
+interface Item { id: string; title: string; caption: string | null; categoryId: string; category: string; kind: "image" | "video"; src: string; thumb: string | null; sizeBytes: number; visible: boolean; width: number; height: number;  eventId: string | null; }
 interface Cat { id: string; name: string }
+interface CatalogueEvent {
+  id: string;
+  title: string;
+}
 interface Data { items: Item[]; categories: Cat[] }
-interface Q { key: string; file: File; title: string; categoryId: string; preview: string; width: number; height: number; thumb: Blob | null; status: "ready" | "uploading" | "uploaded" | "error"; progress: number; error?: string; mediaId?: string; thumbMediaId?: string }
+interface Q { key: string; file: File; title: string; categoryId: string; preview: string; width: number; eventId: string; height: number; thumb: Blob | null; status: "ready" | "uploading" | "uploaded" | "error"; progress: number; error?: string; mediaId?: string; thumbMediaId?: string }
 
 const IMG = ["image/jpeg", "image/png", "image/webp"], VID = ["video/mp4", "video/webm"];
 const MAX_IMG = 10 * 1048576, MAX_VID = 100 * 1048576;   // mirrors the API defaults; the server enforces its own limits
@@ -27,6 +31,10 @@ function Preview({ it, className = "" }: { it: Item; className?: string }) {
 export function GalleryManager() {
   const toast = useToast(); const confirm = useConfirm();
   const { data, error, loading, reload, setData } = useAdminData(() => api<Data>("/api/admin/gallery"));
+  const { data: eventsData } = useAdminData(
+  () => api<{ items: CatalogueEvent[] }>("/api/admin/catalogue-events").then((r) => r.items),
+);
+const events = eventsData ?? [];
   const [fCat, setFCat] = useState(""); const [fKind, setFKind] = useState(""); const [fVis, setFVis] = useState("");
   const [edit, setEdit] = useState<Item | null>(null); const [cats, setCats] = useState(false); const [busy, setBusy] = useState<string | null>(null);
   const items = data?.items ?? []; const categories = data?.categories ?? [];
@@ -58,7 +66,7 @@ export function GalleryManager() {
     <>
       <PageHead title="Gallery" text="Photos and videos shown in the public gallery. Photos open in the lightbox; videos play with controls."><button type="button" className="btn btn-ghost" onClick={() => setCats(true)}><Tags className="h-4 w-4" aria-hidden="true" />Categories</button></PageHead>
       {error && <ErrorBox message={error} onRetry={reload} />}
-      {data && <Uploader categories={categories} onDone={reload} />}
+     {data && <Uploader categories={categories} events={events} onDone={reload} />}
       <div className="mt-10 flex flex-wrap items-center gap-3" role="group" aria-label="Filter gallery items">
         <select aria-label="Filter by category" value={fCat} onChange={(e) => setFCat(e.target.value)} className={`${inputCls} w-full sm:!w-auto`}><option value="">All categories</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
         <select aria-label="Filter by type" value={fKind} onChange={(e) => setFKind(e.target.value)} className={`${inputCls} w-full sm:!w-auto`}><option value="">Photos &amp; videos</option><option value="image">Photos</option><option value="video">Videos</option></select>
@@ -89,13 +97,13 @@ export function GalleryManager() {
               </li>); })}
           </ul>)}
       </div>
-      {edit && <EditItem item={edit} categories={categories} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
+      {edit && <EditItem item={edit} categories={categories} events={events} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
       {cats && <Categories categories={categories} onClose={() => setCats(false)} onChanged={refreshGallery} />}
     </>
   );
 }
 
-function Uploader({ categories, onDone }: { categories: Cat[]; onDone: () => void }) {
+function Uploader({ categories, events, onDone }: { categories: Cat[]; events: CatalogueEvent[]; onDone: () => void }) {
   const toast = useToast(); const input = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState<Q[]>([]); const [running, setRunning] = useState(false); const [drag, setDrag] = useState(false); const [note, setNote] = useState("");
   const patch = (key: string, p: Partial<Q>) => setQ((s) => s.map((x) => (x.key === key ? { ...x, ...p } : x)));
@@ -107,7 +115,7 @@ function Uploader({ categories, onDone }: { categories: Cat[]; onDone: () => voi
       if (!img && !vid) { rejected.push(`${f.name}: unsupported type (use JPEG, PNG, WebP, MP4 or WebM)`); continue; }
       if (f.size > (img ? MAX_IMG : MAX_VID)) { rejected.push(`${f.name}: larger than ${img ? 10 : 100} MB`); continue; }
       const meta = await inspectFile(f);
-      fresh.push({ key: crypto.randomUUID(), file: f, title: stem(f.name), categoryId: categories[0]?.id ?? "", preview: meta.preview, width: meta.width, height: meta.height, thumb: meta.thumb, status: "ready", progress: 0 });
+     fresh.push({ key: crypto.randomUUID(), file: f, title: stem(f.name), categoryId: categories[0]?.id ?? "", eventId: events[0]?.id ?? "", preview: meta.preview, width: meta.width, height: meta.height, thumb: meta.thumb, status: "ready", progress: 0 });
     }
     setNote(rejected.join(" · ")); setQ((s) => [...s, ...fresh]);
   };
@@ -156,6 +164,20 @@ function Uploader({ categories, onDone }: { categories: Cat[]; onDone: () => voi
                 <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[1fr_11rem]">
                   <input aria-label={`Title for ${x.file.name}`} value={x.title} maxLength={160} disabled={x.status === "uploading"} onChange={(e) => patch(x.key, { title: e.target.value })} className={inputCls} />
                   <select aria-label={`Category for ${x.file.name}`} value={x.categoryId} disabled={x.status === "uploading"} onChange={(e) => patch(x.key, { categoryId: e.target.value })} className={inputCls}>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                  <select aria-label={`Associated event for ${x.file.name}`}  value={x.eventId}  disabled={x.status === "uploading"}   onChange={(e) => patch(x.key, { eventId: e.target.value })}    className={inputCls}    >
+                          
+                                       
+                                    
+                                    
+ 
+                                                          
+                        <option value="">No associated event</option>
+                               {events.map((event) => (
+                                                     <option key={event.id} value={event.id}>
+                                                                              {event.title}
+                                                                          </option>
+  ))}
+</select>
                   <div className="sm:col-span-2">
                     <p className="truncate text-xs text-ink-soft">{x.file.name} · {fmtBytes(x.file.size)}{x.status === "uploaded" && " · uploaded"}</p>
                     {(x.status === "uploading" || x.status === "uploaded") && <div role="progressbar" aria-label={`Upload progress for ${x.file.name}`} aria-valuenow={Math.round(x.progress * 100)} aria-valuemin={0} aria-valuemax={100} className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full bg-accent transition-[width]" style={{ width: `${Math.round(x.progress * 100)}%` }} /></div>}
@@ -173,9 +195,21 @@ function Uploader({ categories, onDone }: { categories: Cat[]; onDone: () => voi
   );
 }
 
-function EditItem({ item, categories, onClose, onSaved }: { item: Item; categories: Cat[]; onClose: () => void; onSaved: () => void }) {
+function EditItem({
+  item,
+  categories,
+  events,
+  onClose,
+  onSaved,
+}: {
+  item: Item;
+  categories: Cat[];
+  events: CatalogueEvent[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const toast = useToast();
-  const [v, setV] = useState({ title: item.title, caption: item.caption ?? "", categoryId: item.categoryId, visible: item.visible });
+  const [v, setV] = useState({ title: item.title, caption: item.caption ?? "", categoryId: item.categoryId, visible: item.visible, eventId: item.eventId ?? "", });
   const [file, setFile] = useState<File | null>(null); const [progress, setProgress] = useState<number | null>(null);
   const [busy, setBusy] = useState(false); const [errs, setErrs] = useState<Record<string, string>>({}); const [formErr, setFormErr] = useState("");
   const pick = (f?: File) => {
@@ -184,18 +218,61 @@ function EditItem({ item, categories, onClose, onSaved }: { item: Item; categori
     if (!img && !vid) return setFormErr("Unsupported file type."); if (f.size > (img ? MAX_IMG : MAX_VID)) return setFormErr(`File is larger than ${img ? 10 : 100} MB.`);
     setFile(f);
   };
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault(); setBusy(true); setErrs({}); setFormErr("");
+    const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErrs({});
+    setFormErr("");
+
     try {
-      const body: Record<string, unknown> = { ...v, caption: v.caption.trim() || null };
+      const body: Record<string, unknown> = {
+        ...v,
+        eventId: v.eventId || null,
+        caption: v.caption.trim() || null,
+      };
+
       if (file) {
-        const meta = await inspectFile(file); setProgress(0);
-        const m = await uploadFile(file, "gallery", { width: meta.width, height: meta.height }, setProgress); body.mediaId = m.id;
-        if (meta.thumb) { try { body.thumbMediaId = (await uploadFile(new File([meta.thumb], "thumb.webp", { type: "image/webp" }), "thumb", { width: Math.min(480, meta.width) })).id; } catch { /* optional */ } }
+        const meta = await inspectFile(file);
+        setProgress(0);
+
+        const m = await uploadFile(
+          file,
+          "gallery",
+          { width: meta.width, height: meta.height },
+          setProgress,
+        );
+
+        body.mediaId = m.id;
+
+        if (meta.thumb) {
+          try {
+            body.thumbMediaId = (
+              await uploadFile(
+                new File([meta.thumb], "thumb.webp", { type: "image/webp" }),
+                "thumb",
+                { width: Math.min(480, meta.width) },
+              )
+            ).id;
+          } catch {
+            // Optional thumbnail
+          }
+        }
+
         URL.revokeObjectURL(meta.preview);
       }
-      await api(`/api/admin/gallery/${item.id}`, { method: "PATCH", json: body }); toast("ok", "Saved."); onSaved();
-    } catch (err) { const a = err as ApiError; setErrs(a.fields ?? {}); setFormErr(a.message); setBusy(false); setProgress(null); }
+
+      await api(`/api/admin/gallery/${item.id}`, {
+        method: "PATCH",
+        json: body,
+      });
+
+      onSaved();
+    } catch (error) {
+      setFormErr(error instanceof Error ? error.message : "Could not save gallery item.");
+    } finally {
+      setBusy(false);
+      setProgress(null);
+    }
   };
   return (
     <Modal title="Edit gallery item" onClose={onClose}>
@@ -206,6 +283,23 @@ function EditItem({ item, categories, onClose, onSaved }: { item: Item; categori
         <Field label="Title" error={errs.title}>{(p) => <input {...p} value={v.title} maxLength={160} required onChange={(e) => setV({ ...v, title: e.target.value })} className={inputCls} />}</Field>
         <Field label="Caption (optional)" error={errs.caption}>{(p) => <textarea {...p} rows={3} maxLength={600} value={v.caption} onChange={(e) => setV({ ...v, caption: e.target.value })} className={inputCls} />}</Field>
         <Field label="Category" error={errs.categoryId}>{(p) => <select {...p} value={v.categoryId} onChange={(e) => setV({ ...v, categoryId: e.target.value })} className={inputCls}>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>}</Field>
+        <Field label="Associated event">
+  {(p) => (
+    <select
+      {...p}
+      value={v.eventId}
+      onChange={(e) => setV({ ...v, eventId: e.target.value })}
+      className={inputCls}
+    >
+      <option value="">No associated event</option>
+      {events.map((event) => (
+        <option key={event.id} value={event.id}>
+          {event.title}
+        </option>
+      ))}
+    </select>
+  )}
+</Field>
         <Field label="Replace file (optional)" hint="The old file is deleted from storage once the new one is saved.">{(p) => <input {...p} type="file" accept={[...IMG, ...VID].join(",")} onChange={(e) => pick(e.target.files?.[0])} className={`${inputCls} file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-3 file:py-1 file:text-ink`} />}</Field>
         {progress !== null && <div role="progressbar" aria-label="Upload progress" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100} className="h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full bg-accent" style={{ width: `${progress * 100}%` }} /></div>}
         <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 px-4 py-3"><span className="text-sm text-ink">Show on the public website</span><Toggle checked={v.visible} onChange={(x) => setV({ ...v, visible: x })} label="Visible on website" /></div>

@@ -24,7 +24,7 @@ export const timeline: Milestone[] = [
     description:
       "Created as the official student activity club of the CSE Department at AITR, with one vision: meaningful involvement beyond the classroom through technical learning, cultural expression and community service.",
     year: site.foundedYear,
-    image: "/about/cyber-crime-awareness-poster.jpg",
+    image: "/about/spectra.png",
     imageAlt: "Spectra CSE Club at AITR",
   },
   {
@@ -57,7 +57,7 @@ export const timeline: Milestone[] = [
       "The Cyber Crime Awareness Drive carried safe internet practices, scam prevention and digital responsibility beyond our campus.",
     year: yearOf("cyber-crime-awareness-drive"),
     eventSlugs: ["cyber-crime-awareness-drive"],
-    image: "/about/sur-sangram-poster.jpg",
+    image: "/about/cyber-crime-awareness-poster.jpg",
     imageAlt: "Cyber Crime Awareness Drive",
   },
 ];

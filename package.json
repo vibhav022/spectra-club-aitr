@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+"dev:api": "npm run build && npx wrangler pages dev out",
     "build": "next build",
     "start": "npx wrangler pages dev out",
     "lint": "eslint .",

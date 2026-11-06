@@ -14,6 +14,7 @@ SESSION_DAYS = "7"
 # ImageKit (public values only). The PRIVATE key is a secret: never write it here.
 IMAGEKIT_URL_ENDPOINT = "https://ik.imagekit.io/kjts6sbcja"
 IMAGEKIT_PUBLIC_KEY = "public_UA0DCROYIkJsK5jHWht+cfik46U="
+ 
 
  
  

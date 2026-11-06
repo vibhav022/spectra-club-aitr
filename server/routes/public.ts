@@ -19,11 +19,42 @@ publicApi.get("/faculty", async (c) => {
   return c.json({ items: rows.map((r) => ({ id: r.id, name: r.name, role: r.designation, department: r.department, tier: "faculty", photo: r.object_key ? mediaUrl(r.object_key) : null })) });
 });
 publicApi.get("/gallery", async (c) => {
-  const rows = (await c.env.DB.prepare(`${GALLERY_SELECT} WHERE g.visible = 1 ORDER BY g.sort_order, g.created_at DESC`).all<Parameters<typeof galleryShape>[0]>()).results;
-  const cats = (await c.env.DB.prepare("SELECT name FROM gallery_categories ORDER BY sort_order, name").all<{ name: string }>()).results;
+  const eventSlug = c.req.query("event");
+
+  const rows = (
+    await c.env.DB.prepare(`
+      ${GALLERY_SELECT}
+      LEFT JOIN site_events e ON e.id = g.event_id
+      WHERE g.visible = 1
+      ${eventSlug ? "AND e.slug = ?" : ""}
+      ORDER BY g.sort_order, g.created_at DESC
+    `)
+      .bind(...(eventSlug ? [eventSlug] : []))
+      .all<Parameters<typeof galleryShape>[0]>()
+  ).results;
+
+  const cats = (
+    await c.env.DB.prepare(
+      "SELECT name FROM gallery_categories ORDER BY sort_order, name",
+    ).all<{ name: string }>()
+  ).results;
+
   return c.json({
     categories: cats.map((x) => x.name),
-    items: rows.map((r) => { const s = galleryShape(r); return { id: s.id, title: s.title, caption: s.caption, category: s.category, kind: s.kind, src: s.src, thumb: s.thumb, width: s.width, height: s.height }; }),
+    items: rows.map((r) => {
+      const s = galleryShape(r);
+      return {
+        id: s.id,
+        title: s.title,
+        caption: s.caption,
+        category: s.category,
+        kind: s.kind,
+        src: s.src,
+        thumb: s.thumb,
+        width: s.width,
+        height: s.height,
+      };
+    }),
   });
 });
 /** Visible upcoming events, soonest first. An event drops off 24 h after it starts (same rule as the website card). */
