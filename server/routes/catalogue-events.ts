@@ -95,14 +95,14 @@ function publicShape(r: EventRow) {
   };
 }
 
-const categories = [
-  "Cultural",
-  "Community / Outreach",
-  "Club Onboarding",
-  "Tech",
-  "Sports",
-  "Literary",
-] as const;
+// const categories = [
+//   "Cultural",
+//   "Community / Outreach",
+//   "Club Onboarding",
+//   "Tech",
+//   "Sports",
+//   "Literary",
+// ] as const;
 
 const schema = z.object({
   slug: z.string()
@@ -113,7 +113,7 @@ const schema = z.object({
 
   title: text(120),
 
-  category: z.enum(categories),
+  category: text(80),
 
   description: text(3000),
 

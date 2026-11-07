@@ -38,7 +38,16 @@ export function FacultySection() {
                     <User className="h-1/3 w-1/3 text-white/25" strokeWidth={1.25} aria-hidden="true" />
                   )}
                 </div>
-                {m && <h3 className="mt-5 text-lg font-semibold tracking-tight text-ink">{m.name}</h3>}
+              {m && (
+  <div className="mt-5 space-y-2">
+    <h3 className="text-lg font-semibold tracking-tight text-ink">
+      {m.name}
+    </h3>
+    <p className="text-sm font-medium tracking-wide text-cyan-300">
+      {m.role}
+    </p>
+  </div>
+)}
               </div>
             </RevealItem>
           ))}

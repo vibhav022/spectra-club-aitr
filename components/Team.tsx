@@ -177,23 +177,60 @@ export function Team({ asPage = false }: { asPage?: boolean }) {
   return (
     <section id="team" aria-labelledby="team-title" className={`section-y ${asPage ? "pt-32" : ""}`}>
       <div className="container-x space-y-10">
-        <SectionHead id="team-title" eyebrow="Team" title={by("leadership").length + by("core").length ? "Meet the core committee" : "Meet our faculty"} as={asPage ? "h1" : "h2"} />
-        {asPage && <h2 className="sr-only">Committee members</h2>}
-        {by("leadership").length > 0 && (
-          <RevealGroup as="ul" className="grid items-start gap-5 sm:grid-cols-3">
-            {by("leadership").map((m, i) => <RevealItem as="li" key={m.id ?? i} className="list-none"><Profile m={m} variant="lead" /></RevealItem>)}
-          </RevealGroup>
-        )}
-        {by("core").length > 0 && (
-          <RevealGroup as="ul" className="grid grid-cols-2 items-start gap-4 md:grid-cols-4">
-            {by("core").map((m, i) => <RevealItem as="li" key={m.id ?? i} className="list-none"><Profile m={m} variant="core" /></RevealItem>)}
-          </RevealGroup>
-        )}
-        {by("faculty").length > 0 && (
-          <RevealGroup as="ul" className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {by("faculty").map((m, i) => <RevealItem as="li" key={m.id ?? i} className="list-none"><Faculty m={m} /></RevealItem>)}
-          </RevealGroup>
-        )}
+        <SectionHead
+  id="team-title"
+  eyebrow="Team"
+  title="Meet the core committee"
+  as={asPage ? "h1" : "h2"}
+/>
+
+{asPage && <h2 className="sr-only">Faculty and student committee</h2>}
+
+{/* 1. FACULTY FIRST */}
+{!asPage && by("faculty").length > 0 && (
+  <div className="space-y-5">
+    <h2 className="text-2xl font-semibold tracking-tight text-ink">
+      Our Faculty
+    </h2>
+
+    <RevealGroup as="ul" className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {by("faculty").map((m, i) => (
+        <RevealItem as="li" key={m.id ?? i} className="list-none">
+          <Faculty m={m} />
+        </RevealItem>
+      ))}
+    </RevealGroup>
+  </div>
+)}
+
+{/* 2. STUDENT LEADERSHIP */}
+{(by("leadership").length > 0 || by("core").length > 0) && (
+  <div className="space-y-8">
+    {/* <h2 className="text-2xl font-semibold tracking-tight text-ink">
+      Student Team
+    </h2> */}
+
+    {by("leadership").length > 0 && (
+      <RevealGroup as="ul" className="grid items-start gap-5 sm:grid-cols-3">
+        {by("leadership").map((m, i) => (
+          <RevealItem as="li" key={m.id ?? i} className="list-none">
+            <Profile m={m} variant="lead" />
+          </RevealItem>
+        ))}
+      </RevealGroup>
+    )}
+
+    {by("core").length > 0 && (
+      <RevealGroup as="ul" className="grid grid-cols-2 items-start gap-4 md:grid-cols-4">
+        {by("core").map((m, i) => (
+          <RevealItem as="li" key={m.id ?? i} className="list-none">
+            <Profile m={m} variant="core" />
+          </RevealItem>
+        ))}
+      </RevealGroup>
+    )}
+  </div>
+)}
       </div>
     </section>
   );

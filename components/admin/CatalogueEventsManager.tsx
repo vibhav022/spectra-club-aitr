@@ -34,13 +34,7 @@ import {
   useToast,
 } from "./ui";
 
-type Category =
-  | "Cultural"
-  | "Community / Outreach"
-  | "Club Onboarding"
-  | "Tech"
-  | "Sports"
-  | "Literary";
+type Category = string;
 
 type Wash = "magenta" | "blue" | "teal" | "green";
 
@@ -541,18 +535,32 @@ function CatalogueEventForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Category" error={errs.category}>
             {(p) => (
-              <select
-                {...p}
-                value={values.category}
-                onChange={set("category")}
-                className={inputCls}
-              >
-                {CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
+              <Field
+  label="Category"
+  error={errs.category}
+  hint="Choose an existing category or type a new one."
+>
+  {(p) => (
+    <>
+      <input
+        {...p}
+        list="catalogue-event-categories"
+        value={values.category}
+        onChange={set("category")}
+        className={inputCls}
+        maxLength={80}
+        required
+        placeholder="e.g. Workshops"
+      />
+
+      <datalist id="catalogue-event-categories">
+        {CATEGORIES.map((category) => (
+          <option key={category} value={category} />
+        ))}
+      </datalist>
+    </>
+  )}
+</Field>
             )}
           </Field>
 
