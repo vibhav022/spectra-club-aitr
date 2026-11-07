@@ -74,6 +74,7 @@ import type { EventCategory, Placeholderable } from "./types";
 
 export interface Event extends Placeholderable {
   slug: string;
+  parentEventId?: string | null;
   title: string;
   category: EventCategory;
   year?: number;

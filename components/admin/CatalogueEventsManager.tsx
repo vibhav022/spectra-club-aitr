@@ -40,6 +40,7 @@ type Wash = "magenta" | "blue" | "teal" | "green";
 
 interface CatalogueEvent {
   id: string;
+  parentEventId: string | null;
   slug: string;
   title: string;
   category: Category;
@@ -117,6 +118,7 @@ export function CatalogueEventsManager() {
   const [edit, setEdit] = useState<CatalogueEvent | "new" | null>(
     null
   );
+  const [newParentId, setNewParentId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const items = data ?? [];
@@ -187,7 +189,10 @@ export function CatalogueEventsManager() {
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => setEdit("new")}
+          onClick={() => {
+  setNewParentId(null);
+  setEdit("new");
+}}
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           Add event
@@ -204,17 +209,22 @@ export function CatalogueEventsManager() {
           text="Add your first event. It will appear on the public Events page once published."
         >
           <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => setEdit("new")}
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Add first event
-          </button>
+  type="button"
+  className="btn btn-primary"
+  onClick={() => {
+    setNewParentId(null);
+    setEdit("new");
+  }}
+>
+  <Plus className="h-4 w-4" aria-hidden="true" />
+  Add first event
+</button>
         </EmptyState>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {items.map((event) => (
+          {items
+  .filter((event) => !event.parentEventId)
+  .map((event) => (
             <li
               key={event.id}
               className={`glass overflow-hidden rounded-[var(--radius-card)] ${
@@ -281,6 +291,44 @@ export function CatalogueEventsManager() {
                   </p>
                 )}
 
+
+                {items.filter((child) => child.parentEventId === event.id).length > 0 && (
+  <div className="mt-4 border-t border-white/10 pt-3">
+    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-accent">
+      Sub-events
+    </p>
+
+    <div className="space-y-2">
+      {items
+        .filter((child) => child.parentEventId === event.id)
+        .map((child) => (
+          <div
+            key={child.id}
+            className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-ink">
+                {child.title}
+              </p>
+              <p className="text-xs text-ink-soft">
+                {child.visible ? "Published" : "Hidden"}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className={btnSmall}
+              onClick={() => setEdit(child)}
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+              Edit
+            </button>
+          </div>
+        ))}
+    </div>
+  </div>
+)}
+
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
@@ -328,6 +376,17 @@ export function CatalogueEventsManager() {
                       aria-hidden="true"
                     />
                   </button>
+                                    <button
+                    type="button"
+                    className={btnSmall}
+                    onClick={() => {
+                      setNewParentId(event.id);
+                      setEdit("new");
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                    Add sub-event
+                  </button>
                 </div>
               </div>
             </li>
@@ -338,6 +397,8 @@ export function CatalogueEventsManager() {
       {edit && (
         <CatalogueEventForm
           event={edit === "new" ? null : edit}
+          allEvents={items}
+          initialParentId={newParentId}
           onClose={() => setEdit(null)}
           onSaved={() => {
             setEdit(null);
@@ -351,10 +412,14 @@ export function CatalogueEventsManager() {
 
 function CatalogueEventForm({
   event,
+  allEvents,
+  initialParentId,
   onClose,
   onSaved,
 }: {
   event: CatalogueEvent | null;
+  allEvents: CatalogueEvent[];
+  initialParentId: string | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -362,6 +427,7 @@ function CatalogueEventForm({
 
   const [values, setValues] = useState(() => ({
     ...EMPTY_EVENT,
+    parentEventId: event?.parentEventId ?? initialParentId ?? "",
     title: event?.title ?? "",
     slug: event?.slug ?? "",
     category: event?.category ?? "Tech",
@@ -429,6 +495,7 @@ function CatalogueEventForm({
       .filter(Boolean);
 
     const body = {
+      parentEventId: values.parentEventId || null,
       title: values.title.trim(),
       slug: values.slug.trim(),
       category: values.category,
@@ -489,6 +556,45 @@ function CatalogueEventForm({
             onChange={setVideo}
           />
         </div>
+
+        <Field
+  label="Parent event (optional)"
+  error={errs.parentEventId}
+  hint="Leave this empty for a main event. Select a parent to make this a sub-event."
+>
+  {(p) => (
+    <select
+      {...p}
+      value={values.parentEventId}
+      onChange={set("parentEventId")}
+      className={inputCls}
+    >
+      <option value="">None — main event</option>
+      {allEvents
+        .filter(
+          (item) =>
+            !item.parentEventId && item.id !== event?.id
+        )
+        .map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.title}
+          </option>
+        ))}
+    </select>
+  )}
+</Field>
+
+
+
+
+
+
+
+
+
+
+
+
 
         <Field label="Event title" error={errs.title}>
           {(p) => (

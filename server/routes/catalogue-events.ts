@@ -10,6 +10,7 @@ import { optText, optUrl, text } from "../lib/validate";
 
 interface EventRow {
   id: string;
+  parent_event_id: string | null;
   slug: string;
   title: string;
   category: string;
@@ -54,6 +55,7 @@ function parseHighlights(value: string): string[] {
 export function shapeEvent(r: EventRow) {
   return {
     id: r.id,
+    parentEventId: r.parent_event_id,
     slug: r.slug,
     title: r.title,
     category: r.category,
@@ -81,6 +83,7 @@ function publicShape(r: EventRow) {
 
   return {
     slug: e.slug,
+    parentEventId: e.parentEventId,
     title: e.title,
     category: e.category,
     description: e.description,
@@ -138,8 +141,11 @@ const schema = z.object({
 
   videoMediaId: z.string().trim().min(1).max(80).nullable().optional(),
 
-  visible: z.boolean().default(false),
+    visible: z.boolean().default(false),
+
+  parentEventId: z.string().trim().min(1).max(80).nullable().optional(),
 });
+ 
 
 const visibilitySchema = z.object({
   visible: z.boolean(),
@@ -211,6 +217,54 @@ async function assertEventMedia(
   }
 }
 
+async function assertParentEvent(
+  env: Env,
+  parentEventId: string | null | undefined,
+  currentEventId?: string,
+) {
+  if (!parentEventId) return;
+
+  if (parentEventId === currentEventId) {
+    throw new HttpError(
+      422,
+      "bad_parent",
+      "An event cannot be its own parent.",
+    );
+  }
+
+  const parent = await env.DB.prepare(`
+    SELECT id, parent_event_id
+    FROM site_events
+    WHERE id = ?
+  `).bind(parentEventId).first<{
+    id: string;
+    parent_event_id: string | null;
+  }>();
+
+  if (!parent) {
+    throw new HttpError(
+      422,
+      "bad_parent",
+      "The selected parent event does not exist.",
+    );
+  }
+
+  if (parent.parent_event_id) {
+    throw new HttpError(
+      422,
+      "bad_parent",
+      "Sub-events cannot have another parent event.",
+    );
+  }
+}
+
+
+
+
+
+
+
+
 /* ---------------- ADMIN API ---------------- */
 
 export const catalogueEvents = new Hono<AppEnv>();
@@ -235,20 +289,22 @@ catalogueEvents.post("/", async (c) => {
     d.posterMediaId,
     d.videoMediaId,
   );
+    await assertParentEvent(c.env, d.parentEventId);
 
   const id = newId();
 
   try {
     await c.env.DB.prepare(`
-      INSERT INTO site_events (
+            INSERT INTO site_events (
         id, slug, title, category, description,
         event_year, event_date, venue, instagram_url,
         highlights_json, wash,
         poster_media_id, video_media_id,
-        visible, sort_order
+        visible, sort_order, parent_event_id
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-        (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM site_events)
+        (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM site_events),
+        ?
       )
     `).bind(
       id,
@@ -265,6 +321,7 @@ catalogueEvents.post("/", async (c) => {
       d.posterMediaId ?? null,
       d.videoMediaId ?? null,
       d.visible ? 1 : 0,
+      d.parentEventId ?? null,
     ).run();
   } catch (e) {
     throw duplicateError(e);
@@ -314,6 +371,7 @@ catalogueEvents.patch("/:id", async (c) => {
     d.videoMediaId,
     id,
   );
+    await assertParentEvent(c.env, d.parentEventId, id);
 
   try {
     await c.env.DB.prepare(`
@@ -331,6 +389,7 @@ catalogueEvents.patch("/:id", async (c) => {
         poster_media_id = ?,
         video_media_id = ?,
         visible = ?,
+        parent_event_id = ?,
         updated_at = ?
       WHERE id = ?
     `).bind(
@@ -347,6 +406,7 @@ catalogueEvents.patch("/:id", async (c) => {
       d.posterMediaId ?? null,
       d.videoMediaId ?? null,
       d.visible ? 1 : 0,
+      d.parentEventId ?? null,
       nowIso(),
       id,
     ).run();
@@ -408,6 +468,7 @@ publicCatalogueEvents.get("/", async (c) => {
 });
 
 // Fetch one published event by its slug.
+// Fetch one published event and its published sub-events.
 publicCatalogueEvents.get("/:slug", async (c) => {
   const row = await c.env.DB.prepare(`
     ${SELECT}
@@ -416,7 +477,19 @@ publicCatalogueEvents.get("/:slug", async (c) => {
 
   if (!row) throw notFound("Event not found.");
 
+  const children = (
+    await c.env.DB.prepare(`
+      ${SELECT}
+      WHERE e.parent_event_id = ?
+        AND e.visible = 1
+      ORDER BY e.sort_order, e.created_at DESC
+    `).bind(row.id).all<EventRow>()
+  ).results;
+
   return c.json({
-    item: publicShape(row),
+    item: {
+      ...publicShape(row),
+      subEvents: children.map(publicShape),
+    },
   });
 });

@@ -49,14 +49,16 @@ function getEventYear(event: Event): number | null {
 }
 
 export function EventsExplorer({ events }: { events: Event[] }) {
+  const mainEvents = events.filter((event) => !event.parentEventId);
+
   const categories = [
     "All",
-    ...Array.from(new Set(events.map((e) => e.category))),
+    ...Array.from(new Set(mainEvents.map((e) => e.category))),
   ];
 
   const years = Array.from(
     new Set(
-      events
+      mainEvents
         .map(getEventYear)
         .filter((year): year is number => year !== null),
     ),
@@ -65,7 +67,7 @@ export function EventsExplorer({ events }: { events: Event[] }) {
   const [category, setCategory] = useState("All");
   const [selectedYear, setSelectedYear] = useState<number | "all">("all");
 
-  const shown = events.filter((event) => {
+  const shown = mainEvents.filter((event) => {
     const matchesCategory =
       category === "All" || event.category === category;
 

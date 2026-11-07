@@ -18,16 +18,19 @@ import { site } from "@/content/site";
 import type { Event } from "@/content/events";
 import { apiUrl } from "@/lib/api";
 
-type EventResponse = {
-  item: Event;
+type EventDetail = Event & {
+  subEvents?: Event[];
 };
 
+type EventResponse = {
+  item: EventDetail;
+};
 type EventsResponse = {
   items: Event[];
 };
 
 export default function EventViewPage() {
-  const [event, setEvent] = useState<Event | null>(null);
+  const [event, setEvent] = useState<EventDetail | null>(null);
   const [related, setRelated] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -298,7 +301,37 @@ console.log("EVENT API URL:", apiUrl(`/api/public/events/${encodeURIComponent(sl
             />
           )}
         </div>
-      </article>
+           </article>
+
+      {event.subEvents && event.subEvents.length > 0 && (
+        <section aria-labelledby="sub-events-title" className="section-y">
+          <div className="container-x">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+              Explore the activities
+            </p>
+
+            <h2 id="sub-events-title" className="mt-3">
+              Activities at {event.title}
+            </h2>
+
+            <RevealGroup
+              as="ul"
+              className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3"
+            >
+              {event.subEvents.map((item, index) => (
+                <RevealItem
+                  as="li"
+                  key={item.slug}
+                  delay={(index % 3) * 0.07}
+                  className="list-none"
+                >
+                  <EventCard event={item} />
+                </RevealItem>
+              ))}
+            </RevealGroup>
+          </div>
+        </section>
+      )}
 
       {related.length > 0 && (
         <section aria-labelledby="related-title" className="section-y">
