@@ -33,19 +33,17 @@ export const timeline: Milestone[] = [
     title: "Meeting the community",
     description:
       "Our welcome orientation brought students together to meet the committee, meet the community and see what the year ahead holds.",
-    year: yearOf("nexus-welcome-orientation"),
-    eventSlugs: ["nexus-welcome-orientation"],
+    // year: yearOf("nexus-welcome-orientation"),
+    // eventSlugs: ["nexus-welcome-orientation"],
     image: "/about/Goonj 2026.jpeg",
     imageAlt: "Spectra welcome orientation",
   },
-  {
+    {
     key: "flagships",
     stage: "Flagships",
     title: "Thirak and Sur Sangram take the stage",
     description:
       "Two high-energy cultural showcases became our signatures: a dance competition full of colour and lights, and a singing showcase where voices take the spotlight.",
-    year: yearOf("thirak") ?? yearOf("sur-sangram"),
-    eventSlugs: ["thirak", "sur-sangram"],
     image: "/about/thirak-poster.jpg",
     imageAlt: "Thirak and Sur Sangram cultural events",
   },
@@ -55,8 +53,6 @@ export const timeline: Milestone[] = [
     title: "Taking Spectra to government schools",
     description:
       "The Cyber Crime Awareness Drive carried safe internet practices, scam prevention and digital responsibility beyond our campus.",
-    year: yearOf("cyber-crime-awareness-drive"),
-    eventSlugs: ["cyber-crime-awareness-drive"],
     image: "/about/cyber-crime-awareness-poster.jpg",
     imageAlt: "Cyber Crime Awareness Drive",
   },
