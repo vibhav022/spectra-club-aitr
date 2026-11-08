@@ -427,7 +427,9 @@ function CatalogueEventForm({
 
   const [values, setValues] = useState(() => ({
     ...EMPTY_EVENT,
-    parentEventId: event?.parentEventId ?? initialParentId ?? "",
+    parentEventId: event
+  ? event.parentEventId ?? ""
+  : initialParentId ?? "",
     title: event?.title ?? "",
     slug: event?.slug ?? "",
     category: event?.category ?? "Tech",
@@ -687,21 +689,19 @@ function CatalogueEventForm({
             )}
           </Field>
         </div>
-
-        <Field label="Description" error={errs.description}>
-          {(p) => (
-            <textarea
-              {...p}
-              rows={5}
-              value={values.description}
-              onChange={set("description")}
-              className={inputCls}
-              maxLength={3000}
-              required
-              placeholder="Describe the event..."
-            />
-          )}
-        </Field>
+<Field label="Description (optional)" error={errs.description}>
+  {(p) => (
+    <textarea
+      {...p}
+      rows={5}
+      value={values.description}
+      onChange={set("description")}
+      className={inputCls}
+      maxLength={3000}
+      placeholder="Describe the event (optional)..."
+    />
+  )}
+</Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Event year (optional)" error={errs.year}>

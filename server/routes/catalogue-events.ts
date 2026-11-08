@@ -118,7 +118,7 @@ const schema = z.object({
 
   category: text(80),
 
-  description: text(3000),
+  description: z.string().trim().max(3000).default(""),
 
   year: z.number().int().min(1900).max(2100).nullable().optional(),
 
