@@ -56,3 +56,19 @@ PBKDF2-SHA256 (100k iterations, the Workers maximum) with per-password salt · r
 npm test                  # unit tests
 bash tests/run-e2e.sh     # API tests against the real Pages Functions runtime + local D1 + a mock ImageKit
 ```
+
+## Admin two-step verification
+
+The login page supports six-digit codes from an authenticator app. Enabling it applies to every admin and requires existing sessions to sign in again.
+
+1. Generate a separate setup key for each active admin. Run the following once per admin on a trusted terminal and share each key privately with its admin.
+
+   ```sh
+   node -e 'const bits = [...require("node:crypto").randomBytes(20)].map(b => b.toString(2).padStart(8,"0")).join(""); console.log(bits.match(/.{5}/g).map(b => "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"[parseInt(b,2)]).join(""))'
+   ```
+
+2. In the authenticator app, add a **time-based** account using the setup key. Use six digits, a 30-second period and SHA-1 if the app asks.
+3. In **Cloudflare → Workers & Pages → spectra-cse-aitr → Settings → Variables and secrets**, select **Production**. Add a secret named `ADMIN_TOTP_SECRETS` containing a JSON object whose keys are the admins' lowercase sign-in email addresses and whose values are their setup keys. For example, use the shape `{"admin@example.com":"REPLACE_WITH_THE_GENERATED_KEY"}`. Include all active admins before enabling it. Keep it out of Git and chat.
+4. Redeploy production, then sign in through an incognito window with your password followed by an authenticator code. If you also use an isolated preview, use separate setup keys there.
+
+If an admin loses their device, the Cloudflare account owner can generate a new key, update that admin's entry in the secret, and redeploy. Rotating the key invalidates that admin's earlier sessions. Keep the Cloudflare owner account protected with its own two-step verification.

@@ -3,7 +3,7 @@
  * Run with: bash tests/run-e2e.sh
  */
 import { execFileSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import { files, start } from "./mock-imagekit.ts";
 
 const BASE = process.env.SITE ?? "http://127.0.0.1:8788";
@@ -62,7 +62,29 @@ await test("login: foreign Origin and missing CSRF header are blocked; same-orig
   eq((await call("/api/auth/login", { method: "POST", json: body, origin: "https://evil.example" })).status, 403, "foreign origin");
   eq((await call("/api/auth/login", { method: "POST", json: body, csrf: false })).status, 403, "no csrf header");
   eq((await call("/api/auth/login", { method: "POST", json: { ...body, password: "wrong-password-123" } })).status, 401, "wrong password");
-  const r = await call("/api/auth/login", { method: "POST", json: body }); eq(r.status, 200);
+  let r = await call("/api/auth/login", { method: "POST", json: body });
+  if (process.env.SPECTRA_TEST_TOTP === "1") {
+    eq(r.status, 401);
+    eq(r.data.error.code, "totp_required");
+    eq(r.headers.get("set-cookie"), null);
+    const legacy = randomBytes(32).toString("hex");
+    const legacyHash = createHash("sha256").update(legacy).digest("hex");
+    sql(`INSERT INTO sessions (id, admin_id, created_at, expires_at, last_seen_at)
+      SELECT '${legacyHash}', id, unixepoch(), unixepoch() + 900, unixepoch() FROM admins WHERE email = '${EMAIL}'`);
+    eq((await call("/api/auth/me", { cookie: `spectra_session=${legacy}` })).status, 401);
+    const counter = Buffer.alloc(8);
+    counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30_000)));
+    const sum = createHmac("sha1", "12345678901234567890").update(counter).digest();
+    const code = String((sum.readUInt32BE(sum[sum.length - 1] & 15) & 0x7fffffff) % 1_000_000).padStart(6, "0");
+    const invalid = await call("/api/auth/login", { method: "POST", json: { ...body, code: "oops" } });
+    eq(invalid.data.error.code, "invalid_totp");
+    eq(invalid.headers.get("set-cookie"), null);
+    r = await call("/api/auth/login", { method: "POST", json: { ...body, code } });
+    const replay = await call("/api/auth/login", { method: "POST", json: { ...body, code } });
+    eq(replay.data.error.code, "invalid_totp");
+    eq(replay.headers.get("set-cookie"), null);
+  }
+  eq(r.status, 200);
   cookie = r.headers.get("set-cookie")!.split(";")[0]; ok(/spectra_session=/.test(cookie), "cookie " + cookie);
   eq((await call("/api/auth/me", { cookie })).data.admin.email, EMAIL);
 });

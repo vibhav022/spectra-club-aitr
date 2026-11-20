@@ -6,6 +6,8 @@ export interface Env {
   MAX_IMAGE_MB?: string;
   MAX_VIDEO_MB?: string;
   SESSION_DAYS?: string;
+  /** Optional rollout secret. Once set, every admin must have a TOTP key. */
+  ADMIN_TOTP_SECRETS?: string;
   /** ImageKit: https://imagekit.io/dashboard/developer/api-keys */
   IMAGEKIT_URL_ENDPOINT: string;   // e.g. https://ik.imagekit.io/your_id
   IMAGEKIT_PUBLIC_KEY: string;     // public_...

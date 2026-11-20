@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { hashPassword, passwordProblem, verifyPassword } from "../server/lib/crypto.ts";
 import { sniff } from "../server/lib/media.ts";
+import { adminTotpSecret, matchTotpStep } from "../server/lib/totp.ts";
 import { isValidDate, isValidTime, toIstIso } from "../server/lib/time.ts";
 
 test("password hashes are salted, verifiable and reject wrong passwords", async () => {
@@ -26,4 +27,15 @@ test("IST date/time validation", () => {
   assert.equal(isValidDate("2026-02-28"), true); assert.equal(isValidDate("2026-02-30"), false); assert.equal(isValidDate("26-1-1"), false);
   assert.equal(isValidTime("00:00"), true); assert.equal(isValidTime("24:00"), false); assert.equal(isValidTime("9:05"), false);
   assert.equal(toIstIso("2026-11-15", "10:00"), "2026-11-15T10:00:00+05:30");
+});
+
+test("authenticator code matches the RFC 6238 SHA-1 vector and expires", async () => {
+  const key = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
+  const email = "admin@example.com";
+  assert.equal(adminTotpSecret(JSON.stringify({ [email]: key }), email), key);
+  assert.equal(adminTotpSecret("{}", email), null);
+  assert.equal(adminTotpSecret("{invalid", email), null);
+  assert.equal(await matchTotpStep(key, "287082", 59), 1);
+  assert.equal(await matchTotpStep(key, "287082", 60), 1);
+  assert.equal(await matchTotpStep(key, "287082", 90), null);
 });

@@ -11,6 +11,11 @@ IMAGEKIT_URL_ENDPOINT=http://127.0.0.1:9911/ik/test
 IMAGEKIT_API_URL=http://127.0.0.1:9911/v1
 IMAGEKIT_UPLOAD_URL=http://127.0.0.1:9911/upload
 VARS
+if [[ "${SPECTRA_TEST_TOTP:-}" == 1 ]]; then
+  cat >> .dev.vars <<'VARS'
+ADMIN_TOTP_SECRETS='{"admin1@test.invalid":"GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"}'
+VARS
+fi
 npx wrangler d1 migrations apply spectra-db --local >/dev/null
 ADMIN_EMAIL=admin1@test.invalid ADMIN_NAME="Test Admin" ADMIN_PASSWORD="Correct-Horse-Battery-1" npx tsx scripts/db/create-admin.ts --local
 [ -d out ] || npm run build
