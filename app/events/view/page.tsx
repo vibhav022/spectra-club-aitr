@@ -16,7 +16,7 @@ import { EventCard } from "@/components/EventCard";
 import { RevealGroup, RevealItem } from "@/components/Reveal";
 import { site } from "@/content/site";
 import type { Event } from "@/content/events";
-import { apiUrl } from "@/lib/api";
+import { apiUrl, eventMedia } from "@/lib/api";
 
 type EventDetail = Event & {
   subEvents?: Event[];
@@ -81,7 +81,7 @@ console.log("EVENT API URL:", apiUrl(`/api/public/events/${encodeURIComponent(sl
 
         if (!active) return;
 
-        const currentEvent = eventData.item;
+        const currentEvent = { ...eventMedia(eventData.item), subEvents: eventData.item.subEvents?.map(eventMedia) };
 
         setEvent(currentEvent);
 
@@ -94,7 +94,7 @@ console.log("EVENT API URL:", apiUrl(`/api/public/events/${encodeURIComponent(sl
           ...others.filter((item) => item.category !== currentEvent.category),
         ];
 
-        setRelated(sorted.slice(0, 3));
+        setRelated(sorted.slice(0, 3).map(eventMedia));
       } catch (err) {
         if (!active) return;
 

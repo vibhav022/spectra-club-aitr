@@ -105,13 +105,15 @@ await test("complete: without uploading anything fails cleanly", async () => {
 });
 
 let member: any, photo1: any;
-await test("team: create with an uploaded photo; the public API serves the ImageKit CDN URL and it loads", async () => {
+await test("team: create with an uploaded photo; the public API serves a working site media URL", async () => {
   photo1 = await upload(cookie, PNG, "image/png");
-  ok(photo1.url.startsWith("http://127.0.0.1:9911/ik/test/spectra/photo/"), "url " + photo1.url);
+  ok(photo1.url.startsWith("/api/media/photo/"), "url " + photo1.url);
+  eq((await call(photo1.url)).status, 404, "unattached photo is private");
+  eq((await call(photo1.url, { cookie })).status, 200, "admin can preview");
   const c = await call("/api/admin/team", { method: "POST", cookie, json: { name: "Asha Rao", role: "President", tier: "leadership", photoMediaId: photo1.id } });
   eq(c.status, 201); member = c.data.item;
   const pub = await call("/api/public/team"); eq(pub.data.items.length, 1); eq(pub.data.items[0].photo, photo1.url);
-  const img = await fetch(pub.data.items[0].photo); eq(img.status, 200);
+  const img = await fetch(BASE + pub.data.items[0].photo); eq(img.status, 200);
 });
 await test("team: the same upload cannot be attached to two records", async () => {
   eq((await call("/api/admin/team", { method: "POST", cookie, json: { name: "Dup", role: "Core", tier: "core", photoMediaId: photo1.id } })).status, 409);
@@ -126,7 +128,7 @@ await test("team: deleting the member deletes the photo from ImageKit and the me
   ok(!files.has(photo1.fileId), "file gone"); eq(count(`SELECT COUNT(*) n FROM media WHERE id='${photo1.id}'`), 0, "media row removed");
 });
 
-await test("gallery: image + video (with thumbnail) are created; public API exposes CDN URLs; hidden items stay hidden", async () => {
+await test("gallery: image + video (with thumbnail) are created; public media loads and hidden media requires an admin session", async () => {
   const cats = (await call("/api/admin/gallery", { cookie })).data.categories; const tech = cats.find((c: any) => c.name === "Tech").id;
   const img = await upload(cookie, JPG, "image/jpeg", "gallery"), vid = await upload(cookie, MP4, "video/mp4", "gallery"), th = await upload(cookie, PNG, "image/png", "thumb");
   const hid = await upload(cookie, PNG, "image/png", "gallery");
@@ -134,8 +136,60 @@ await test("gallery: image + video (with thumbnail) are created; public API expo
     { title: "Hack night", categoryId: tech, mediaId: img.id }, { title: "Reel", categoryId: tech, mediaId: vid.id, thumbMediaId: th.id }, { title: "Secret", categoryId: tech, mediaId: hid.id, visible: false } ] } });
   eq(r.status, 201, JSON.stringify(r.data));
   const pub = (await call("/api/public/gallery")).data; eq(pub.items.length, 2);
+  eq((await call(hid.url)).status, 404);
+  eq((await call(hid.url, { cookie })).status, 200);
+  const video = await fetch(BASE + vid.url, { headers: { Range: "bytes=0-15" } });
+  eq(video.status, 206);
+  eq(video.headers.get("content-range"), `bytes 0-15/${MP4.length}`);
+  eq(video.headers.get("cache-control"), "private, no-store");
+  eq(video.headers.get("location"), null, "upstream URL is not exposed");
+  eq((await video.arrayBuffer()).byteLength, 16);
   const reel = pub.items.find((i: any) => i.kind === "video"); eq(reel.src, vid.url); eq(reel.thumb, th.url);
   eq((await call("/api/public/counts")).data.gallery, 2);
+});
+
+await test("unpublishing an event hides linked gallery items and revokes their public media URLs", async () => {
+  const slug = "gallery-visibility";
+  const event = await call("/api/admin/catalogue-events", {
+    method: "POST", cookie, json: { slug, title: "Gallery visibility", category: "Tech", visible: true },
+  });
+  eq(event.status, 201);
+  const item = await upload(cookie, PNG, "image/png", "gallery");
+  const thumb = await upload(cookie, PNG, "image/png", "thumb");
+  const { categories } = (await call("/api/admin/gallery", { cookie })).data;
+  const gallery = await call("/api/admin/gallery", {
+    method: "POST", cookie, json: { items: [{
+      title: "Linked photo", categoryId: categories[0].id, eventId: event.data.item.id,
+      mediaId: item.id, thumbMediaId: thumb.id,
+    }] },
+  });
+  eq(gallery.status, 201);
+  const galleryUrl = `/api/public/gallery?event=${slug}`;
+  eq((await call(galleryUrl)).data.items.length, 1);
+  eq((await call("/api/public/counts")).data.gallery, 3);
+  for (const url of [item.url, thumb.url]) eq((await call(url)).status, 200);
+  eq((await call(`/api/admin/catalogue-events/${event.data.item.id}`, {
+    method: "PATCH", cookie, json: { visible: false },
+  })).status, 200);
+  eq((await call(galleryUrl)).data.items.length, 0);
+  eq((await call("/api/public/gallery")).data.items.length, 2);
+  eq((await call("/api/public/counts")).data.gallery, 2);
+  for (const url of [item.url, thumb.url]) {
+    eq((await call(url)).status, 404);
+    eq((await call(url, { method: "HEAD" })).status, 404);
+    eq((await call(url, { cookie })).status, 200);
+  }
+});
+
+await test("security headers cover static pages and event Pages Functions", async () => {
+  for (const path of ["/", "/admin/login/", "/events/gallery-visibility/"]) {
+    const r = await call(path);
+    eq(r.status, 200, path);
+    eq(r.headers.get("strict-transport-security"), "max-age=31536000", path);
+    const policy = r.headers.get("content-security-policy") ?? "";
+    ok(policy.includes("script-src 'self'") && policy.includes("'sha256-") && policy.includes("object-src 'none'"), path);
+    ok(!policy.split(";").find((v) => v.trim().startsWith("script-src "))?.includes("unsafe-inline"), path);
+  }
 });
 
 await test("upcoming events: create, list publicly, hide", async () => {

@@ -36,10 +36,21 @@ export function start() {
     }
     if (url.pathname.startsWith("/ik/test/")) {   // CDN
       const path = url.pathname.slice("/ik/test".length);
+      const expiry = url.searchParams.get("ik-t") ?? "";
+      const signature = createHmac("sha1", PRIVATE_KEY).update(path.slice(1) + expiry).digest("hex");
+      if (Number(expiry) < Date.now() / 1000 || url.searchParams.get("ik-s") !== signature) {
+        res.writeHead(403);
+        return res.end();
+      }
       const hit = [...files.values()].find((f) => f.filePath === path);
       if (!hit) { res.writeHead(404); return res.end(); }
       const range = /bytes=(\d+)-(\d+)/.exec(String(req.headers.range ?? ""));
-      if (range) { res.writeHead(206, { "Content-Type": "application/octet-stream" }); return res.end(hit.data.subarray(Number(range[1]), Number(range[2]) + 1)); }
+      if (range) {
+        const start = Number(range[1]);
+        const end = Math.min(Number(range[2]), hit.data.length - 1);
+        res.writeHead(206, { "Content-Range": `bytes ${start}-${end}/${hit.data.length}`, "Accept-Ranges": "bytes" });
+        return res.end(hit.data.subarray(start, end + 1));
+      }
       res.writeHead(200); return res.end(hit.data);
     }
     res.writeHead(404); res.end();

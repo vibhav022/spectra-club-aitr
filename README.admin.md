@@ -5,7 +5,7 @@ Browser ──► spectra-cse-club.pages.dev
               ├─ /*       Next.js static export (out/)                         Cloudflare Pages
               └─ /api/*   Hono API (functions/api/[[route]].ts -> server/)     Cloudflare Pages Functions
                             ├─ D1        : admins, sessions, team, faculty, gallery, events, media records
-                            └─ ImageKit  : photos and videos (browser uploads straight to ImageKit; served from its CDN)
+                            └─ ImageKit  : photos and videos (browser uploads straight to ImageKit; delivered through the site)
 ```
 
 Everything is on one origin, so the admin session cookie is first-party (`__Host-` prefixed in production) and no CORS setup is needed.
@@ -29,7 +29,7 @@ Everything is on one origin, so the admin session cookie is first-party (`__Host
 
 Pages has no cron triggers, so cleanup of abandoned uploads runs after an admin request, at most every 6 hours.
 
-**Privacy note:** files are served from the ImageKit CDN, so a file's URL works for anyone who has it, even if its record is hidden in the dashboard. URLs contain random IDs and are never listed publicly for hidden items.
+**Media privacy:** the site checks publication and admin session status on each media request. New uploads are private in ImageKit. Enable signed ImageKit delivery as described in [DEPLOY.md](DEPLOY.md) to block old direct CDN links for existing uploads.
 
 ## Local development
 ```bash
@@ -54,5 +54,5 @@ PBKDF2-SHA256 (100k iterations, the Workers maximum) with per-password salt · r
 ## Tests
 ```bash
 npm test                  # unit tests
-bash tests/run-e2e.sh     # 19 API tests against the real Pages Functions runtime + local D1 + a mock ImageKit
+bash tests/run-e2e.sh     # API tests against the real Pages Functions runtime + local D1 + a mock ImageKit
 ```

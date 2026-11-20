@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { EventsExplorer } from "./EventsExplorer";
 import { ComingSoon } from "./ComingSoon";
 import type { Event } from "@/content/events";
-import { apiUrl } from "@/lib/api";
+import { apiUrl, eventMedia } from "@/lib/api";
 
 type EventsResponse = {
   items: Event[];
@@ -32,7 +32,7 @@ export function DynamicEventsExplorer() {
         const data: EventsResponse = await response.json();
 
         if (active) {
-          setEvents(data.items);
+          setEvents(data.items.map(eventMedia));
         }
       } catch (err) {
         if (active) {

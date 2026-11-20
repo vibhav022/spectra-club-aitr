@@ -63,6 +63,12 @@ Then **redeploy** (Option A: Deployments → latest → Retry deployment, or pus
 
 > Bindings (D1) and variables come from `wrangler.toml`, so they show as read-only in the dashboard. Change them in the file and redeploy.
 
+### Require signed ImageKit delivery before launch
+
+Deploy the new build first so gallery and profile media load through the site. In ImageKit, open the [image settings](https://imagekit.io/dashboard/settings/images) and the [video settings](https://imagekit.io/dashboard/settings/videos). Under **Restrict unsigned URLs**, choose **Restrict all requests** for both. This blocks previously shared direct CDN links for existing uploads. If the ImageKit account serves another site, check that site before applying the setting.
+
+After enabling it, verify that an old direct CDN link is rejected, a published site media URL still opens, and the same site URL returns 404 in a signed-out window after you hide the item. Admins should still be able to preview it.
+
 ## 7. Create the administrator accounts (max 3)
 ```bash
 npm run admin:create:remote
@@ -79,7 +85,7 @@ npm run db:seed:remote
 ## 9. Check it works
 1. https://spectra-cse-club.pages.dev/api/health → `{"ok":true}`
 2. https://spectra-cse-club.pages.dev/admin → sign in.
-3. Upload a team photo and a gallery photo/video. They should appear on the public pages after a refresh, with URLs starting with your ImageKit endpoint.
+3. Upload a team photo and a gallery photo/video. They should appear on the public pages after a refresh, with URLs starting with `/api/media/`.
 
 ## Custom domain (later)
 Pages project → **Custom domains → Set up a domain**. Then change `NEXT_PUBLIC_SITE_URL` to the new domain and redeploy (it feeds canonical links, sitemap and social previews). Nothing in the API needs changing: it is same-origin.
