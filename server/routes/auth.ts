@@ -5,6 +5,8 @@ import { body, HttpError, nowIso, nowSec } from "../lib/http";
 import { hashPassword, passwordProblem, randomToken, sha256Hex, verifyPassword } from "../lib/crypto";
 import { clearSessionCookie, clientIp, rateHit, ratePeek, readSession, requireAdmin, sessionDays, setSessionCookie, tooMany } from "../lib/auth";
 
+import { adminTotpSecret, matchTotpStep, totpSessionPrefix } from "../lib/totp";
+
 export const auth = new Hono<AppEnv>();
 const WINDOW = 15 * 60;
 const MAX_FAILS = 5;       // failed attempts per IP + email per 15 minutes
@@ -14,7 +16,7 @@ let dummy: Promise<string> | undefined; // verified against when the email is un
 const dummyHash = () => (dummy ??= hashPassword("not-a-real-password"));
 
 auth.post("/login", async (c) => {
-  const { email, password } = await body(c, z.object({ email: z.string().trim().toLowerCase().email().max(254), password: z.string().min(1).max(200) }));
+  const { email, password, code } = await body(c, z.object({ email: z.string().trim().toLowerCase().email().max(254), password: z.string().min(1).max(200), code: z.string().trim().max(6).optional() }));
   const ip = clientIp(c);
   const failKey = `login:fail:${ip}:${await sha256Hex(email)}`;
   const ipHit = await rateHit(c.env, `login:ip:${ip}`, WINDOW);
@@ -30,10 +32,27 @@ auth.post("/login", async (c) => {
     if (f.count >= MAX_FAILS) throw tooMany(f.retryAfter);
     throw new HttpError(401, "invalid_credentials", "Incorrect email or password.");
   }
-  await c.env.DB.prepare("DELETE FROM rate_limits WHERE key = ?").bind(failKey).run();
-
-  const token = randomToken();
   const now = nowSec();
+  let token = randomToken();
+  if (c.env.ADMIN_TOTP_SECRETS !== undefined) {
+    const secret = adminTotpSecret(c.env.ADMIN_TOTP_SECRETS, admin.email);
+    if (!secret) throw new HttpError(503, "totp_not_configured", "Two-step verification is not set up for this account. Contact the site owner.");
+    if (!code) throw new HttpError(401, "totp_required", "Enter the six-digit code from your authenticator app.");
+
+    const attempts = await rateHit(c.env, `totp:attempt:${admin.id}`, WINDOW);
+    if (attempts.count > MAX_FAILS) throw tooMany(attempts.retryAfter);
+    const step = await matchTotpStep(secret, code, now);
+    if (step === null) throw new HttpError(401, "invalid_totp", "That code is invalid or has expired.");
+
+    const prefix = await totpSessionPrefix(secret);
+    const used = await c.env.DB.prepare(
+      "INSERT OR IGNORE INTO rate_limits (key, window_start, count) VALUES (?, ?, 1)",
+    ).bind(`totp:used:${admin.id}:${prefix}:${step}`, now).run();
+    if (!used.meta.changes) throw new HttpError(401, "invalid_totp", "That code was already used. Wait for a new code.");
+    token = prefix + token;
+    await c.env.DB.prepare("DELETE FROM rate_limits WHERE key = ?").bind(`totp:attempt:${admin.id}`).run();
+  }
+  await c.env.DB.prepare("DELETE FROM rate_limits WHERE key = ?").bind(failKey).run();
   await c.env.DB.batch([
     c.env.DB.prepare("INSERT INTO sessions (id, admin_id, created_at, expires_at, last_seen_at, user_agent, ip) VALUES (?,?,?,?,?,?,?)")
       .bind(await sha256Hex(token), admin.id, now, now + sessionDays(c.env) * 86400, now, (c.req.header("User-Agent") ?? "").slice(0, 200), ip),

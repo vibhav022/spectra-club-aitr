@@ -3,6 +3,7 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { AppEnv, AdminUser, Env } from "../env";
 import { HttpError, nowSec } from "./http";
 import { sha256Hex } from "./crypto";
+import { adminTotpSecret, totpSessionPrefix } from "./totp";
 
 const IDLE_SECONDS = 24 * 3600; // a session unused for a day is dead, even if not yet at its absolute expiry
 export const sessionDays = (env: Env) => Math.min(30, Math.max(1, Number(env.SESSION_DAYS ?? 7)));
@@ -29,6 +30,10 @@ export async function readSession(c: Context<AppEnv>): Promise<{ admin: AdminUse
        FROM sessions s JOIN admins a ON a.id = s.admin_id WHERE s.id = ?`,
   ).bind(sessionId).first<{ expires_at: number; last_seen_at: number; id: string; email: string; name: string; disabled: number }>();
   if (!row) return null;
+  if (c.env.ADMIN_TOTP_SECRETS !== undefined) {
+    const secret = adminTotpSecret(c.env.ADMIN_TOTP_SECRETS, row.email);
+    if (!secret || !token.startsWith(await totpSessionPrefix(secret))) return null;
+  }
   if (row.expires_at <= now || row.disabled || now - row.last_seen_at > IDLE_SECONDS) {
     await c.env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(sessionId).run();
     return null;
