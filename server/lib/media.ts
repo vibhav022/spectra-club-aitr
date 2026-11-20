@@ -1,6 +1,6 @@
 import type { Env } from "../env";
 import { HttpError, newId, nowSec } from "./http";
-import { cdnUrl, deleteFile, findByPath } from "./imagekit";
+import { deleteFile, findByPath } from "./imagekit";
 import { rateHit } from "./auth";
 
 export const TYPES: Record<string, { kind: "image" | "video"; ext: string }> = {
@@ -10,10 +10,10 @@ export const TYPES: Record<string, { kind: "image" | "video"; ext: string }> = {
   "video/mp4": { kind: "video", ext: "mp4" },
   "video/webm": { kind: "video", ext: "webm" },
 };
-/** Public ImageKit URL of a stored file. The endpoint is the same for every request, so it is kept at module level. */
-let endpoint = "";
-export const setMediaEndpoint = (env: Env) => { endpoint = env.IMAGEKIT_URL_ENDPOINT; };
-export const mediaUrl = (key: string) => cdnUrl({ IMAGEKIT_URL_ENDPOINT: endpoint }, key);
+/** Stable site URL. Access is checked against the current publication state on every request. */
+export const mediaUrl = (key: string) => `/api/media/${key.split("/").map(encodeURIComponent).join("/")}`;
+
+export const publicGalleryItem = "g.visible = 1 AND (g.event_id IS NULL OR e.visible = 1)";
 export const limitBytes = (env: Env, kind: "image" | "video") =>
   Math.max(1, Number(kind === "image" ? env.MAX_IMAGE_MB ?? 10 : env.MAX_VIDEO_MB ?? 100)) * 1024 * 1024;
 

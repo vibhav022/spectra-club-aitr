@@ -18,9 +18,13 @@ const hex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map((x) => x.toString
 export async function uploadAuth(env: Env) {
   const token = crypto.randomUUID();
   const expire = Math.floor(Date.now() / 1000) + 20 * 60;
-  const key = await crypto.subtle.importKey("raw", enc.encode(env.IMAGEKIT_PRIVATE_KEY), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
-  const signature = hex(await crypto.subtle.sign("HMAC", key, enc.encode(token + expire)));
+  const signature = await sign(env, token + expire);
   return { token, expire, signature, publicKey: env.IMAGEKIT_PUBLIC_KEY };
+}
+
+async function sign(env: Env, value: string) {
+  const key = await crypto.subtle.importKey("raw", enc.encode(env.IMAGEKIT_PRIVATE_KEY), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+  return hex(await crypto.subtle.sign("HMAC", key, enc.encode(value)));
 }
 
 const basic = (env: Env) => `Basic ${btoa(`${env.IMAGEKIT_PRIVATE_KEY}:`)}`;
@@ -29,8 +33,13 @@ const basic = (env: Env) => `Basic ${btoa(`${env.IMAGEKIT_PRIVATE_KEY}:`)}`;
 export const folderOf = (key: string) => `${ROOT_FOLDER}/${key.split("/").slice(0, -1).join("/")}`;
 export const fileNameOf = (key: string) => key.split("/").pop()!;
 export const pathOf = (key: string) => `${ROOT_FOLDER}/${key}`;
-/** Public CDN URL of a stored object key. */
-export const cdnUrl = (env: Pick<Env, "IMAGEKIT_URL_ENDPOINT">, key: string) => `${env.IMAGEKIT_URL_ENDPOINT.replace(/\/+$/, "")}${pathOf(key)}`;
+/** ImageKit signs the encoded path relative to the URL endpoint, without a leading slash. */
+export async function signedMediaUrl(env: Env, key: string) {
+  const path = pathOf(key).slice(1).split("/").map(encodeURIComponent).join("/");
+  const expires = Math.floor(Date.now() / 1000) + 300;
+  const signature = await sign(env, path + expires);
+  return `${env.IMAGEKIT_URL_ENDPOINT.replace(/\/+$/, "")}/${path}?ik-t=${expires}&ik-s=${signature}`;
+}
 
 export interface IkFile { fileId: string; name: string; filePath: string; url: string; size: number; mime?: string; width?: number; height?: number }
 

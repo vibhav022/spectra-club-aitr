@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../env";
-import { mediaUrl } from "../lib/media";
+import { mediaUrl, publicGalleryItem } from "../lib/media";
 import { listEvents, shape as eventShape } from "./event";
 import { team } from "./team";
 import { faculty } from "./faculty";
@@ -25,7 +25,7 @@ publicApi.get("/gallery", async (c) => {
     await c.env.DB.prepare(`
       ${GALLERY_SELECT}
       LEFT JOIN site_events e ON e.id = g.event_id
-      WHERE g.visible = 1
+      WHERE ${publicGalleryItem}
       ${eventSlug ? "AND e.slug = ?" : ""}
       ORDER BY g.sort_order, g.created_at DESC
     `)
@@ -69,6 +69,6 @@ publicApi.get("/counts", async (c) => {
   const n = async (sql: string) => (await c.env.DB.prepare(sql).first<{ n: number }>())!.n;
   return c.json({
     team: (await n("SELECT COUNT(*) n FROM team_members WHERE visible = 1")) + (await n("SELECT COUNT(*) n FROM faculty WHERE visible = 1")),
-    gallery: await n("SELECT COUNT(*) n FROM gallery_items WHERE visible = 1"),
+    gallery: await n(`SELECT COUNT(*) n FROM gallery_items g LEFT JOIN site_events e ON e.id = g.event_id WHERE ${publicGalleryItem}`),
   });
 });

@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv, Env } from "../env";
 import { body, HttpError, nowSec, newId } from "../lib/http";
-import { limitBytes, newKey, removeRemote, sniff, TYPES } from "../lib/media";
-import { cdnUrl, deleteFile, fileNameOf, folderOf, firstBytes, getFile, pathOf, uploadUrl, uploadAuth } from "../lib/imagekit";
+import { limitBytes, mediaUrl, newKey, removeRemote, sniff, TYPES } from "../lib/media";
+import { deleteFile, fileNameOf, folderOf, firstBytes, getFile, pathOf, signedMediaUrl, uploadUrl, uploadAuth } from "../lib/imagekit";
 
 export const uploads = new Hono<AppEnv>();
 
@@ -37,7 +37,7 @@ uploads.post("/", async (c) => {
     id, url: uploadUrl(c.env),
     // Sent by the browser as multipart form fields (the file itself goes in the "file" field).
     fields: { publicKey: auth.publicKey, signature: auth.signature, expire: String(auth.expire), token: auth.token,
-      fileName: fileNameOf(key), folder: folderOf(key), useUniqueFileName: "false", overwriteFile: "false" },
+      fileName: fileNameOf(key), folder: folderOf(key), useUniqueFileName: "false", overwriteFile: "false", isPrivateFile: "true" },
   }, 201);
 });
 
@@ -62,10 +62,10 @@ uploads.post("/:id/complete", async (c) => {
   if (file.filePath !== pathOf(m.object_key)) return bad(422, "bad_file", "Uploaded file does not match this upload.");
   if (file.size !== m.declared_size || file.size > limitBytes(c.env, m.kind)) return bad(422, "bad_length", "Uploaded file size is wrong or over the limit.", file.fileId);
   let bytes: Uint8Array;
-  try { bytes = await firstBytes(cdnUrl(c.env, m.object_key)); } catch { return bad(502, "storage_error", "Could not verify the uploaded file. Please try again.", file.fileId); }
+  try { bytes = await firstBytes(await signedMediaUrl(c.env, m.object_key)); } catch { return bad(502, "storage_error", "Could not verify the uploaded file. Please try again.", file.fileId); }
   if (!sniff(bytes, m.content_type)) return bad(422, "bad_file", `That file is not a valid ${m.content_type}.`, file.fileId);
   await c.env.DB.prepare("UPDATE media SET status = 'ready', size_bytes = ?, provider_file_id = ?, updated_at = ? WHERE id = ?").bind(file.size, file.fileId, nowSec(), m.id).run();
-  return c.json({ media: { id: m.id, kind: m.kind, url: cdnUrl(c.env, m.object_key), width: m.width, height: m.height, size: file.size } });
+  return c.json({ media: { id: m.id, kind: m.kind, url: mediaUrl(m.object_key), width: m.width, height: m.height, size: file.size } });
 });
 
 /** Abort a pending upload (also removes the file from ImageKit if it already arrived). */

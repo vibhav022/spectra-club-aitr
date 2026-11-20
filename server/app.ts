@@ -3,7 +3,8 @@ import { cors } from "hono/cors";
 import type { AppEnv } from "./env";
 import { HttpError } from "./lib/http";
 import { allowedOrigins, csrfGuard, requireAdmin } from "./lib/auth";
-import { maybeCleanup, setMediaEndpoint } from "./lib/media";
+import { maybeCleanup } from "./lib/media";
+import { media } from "./routes/media";
 import { auth } from "./routes/auth";
 import { team } from "./routes/team";
 import { faculty } from "./routes/faculty";
@@ -16,7 +17,6 @@ import { summary } from "./routes/summary";
 
 const app = new Hono<AppEnv>().basePath("/api");
 
-app.use("*", async (c, next) => { setMediaEndpoint(c.env); await next(); });
 app.use("*", cors({
   origin: (origin, c) => (origin && allowedOrigins(c.env).includes(origin) ? origin : null),
   credentials: true, allowMethods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -24,12 +24,14 @@ app.use("*", cors({
 }));
 app.use("*", async (c, next) => {
   await next();
+  c.header("Strict-Transport-Security", "max-age=31536000");
   c.header("X-Content-Type-Options", "nosniff");
   c.header("Referrer-Policy", "no-referrer");
   if (!c.res.headers.has("Cache-Control")) c.header("Cache-Control", "no-store");
 });
 
 app.get("/health", async (c) => { await c.env.DB.prepare("SELECT 1").first(); return c.json({ ok: true }); });
+app.route("/media", media);
 app.route("/public", publicApi);
 app.route("/public/events", publicCatalogueEvents);
 
