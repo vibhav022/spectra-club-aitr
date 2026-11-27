@@ -1,6 +1,6 @@
 import type { Placeholderable } from "./types";
 /** src omitted = designed placeholder tile. Real photos: add src + width/height + descriptive alt. */
-export interface GalleryItem extends Placeholderable { id?: string; src?: string; thumb?: string; kind?: "image" | "video"; alt: string; caption?: string; category: string; width: number; height: number }
+export interface GalleryItem extends Placeholderable { id?: string; src?: string; thumb?: string; kind?: "image" | "video"; alt: string; caption?: string; category: string; event?: { slug: string; title: string }; width: number; height: number }
 export const gallery: GalleryItem[] = [
   { alt: "Placeholder: cultural event photo", category: "Cultural", width: 800, height: 1000, isPlaceholder: true },
   { alt: "Placeholder: tech workshop photo", category: "Tech", width: 800, height: 600, isPlaceholder: true },
