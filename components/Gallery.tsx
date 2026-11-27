@@ -114,6 +114,23 @@ export function Gallery({ items, categories = DEFAULT_CATEGORIES, limit, asPage 
   const [staggering, setStaggering] = useState(true);
   const [lockH, setLockH] = useState<number | undefined>(undefined);
   const grid = useRef<HTMLDivElement>(null);
+  const filterStrip = useRef<HTMLDivElement>(null);
+  const [hasMoreFilters, setHasMoreFilters] = useState(false);
+  const hasItems = items.length > 0;
+  const updateFilterEdge = useCallback(() => {
+    const strip = filterStrip.current;
+    if (strip) setHasMoreFilters(strip.scrollWidth - strip.clientWidth - strip.scrollLeft > 2);
+  }, []);
+
+  useEffect(() => {
+    const strip = filterStrip.current;
+    if (!strip) return;
+    const observer = new ResizeObserver(updateFilterEdge);
+    observer.observe(strip);
+    if (strip.firstElementChild) observer.observe(strip.firstElementChild);
+    updateFilterEdge();
+    return () => observer.disconnect();
+  }, [hasItems, updateFilterEdge]);
   const thumbs = useRef(new Map<string, HTMLElement>());
   const trigger = useRef<HTMLElement | null>(null);
   const lastId = useRef<string | null>(null);
@@ -156,11 +173,19 @@ export function Gallery({ items, categories = DEFAULT_CATEGORIES, limit, asPage 
     <section id="gallery" aria-labelledby="gallery-title" className={`section-y border-b border-white/10 ${asPage ? "pt-32" : ""}`}>
       <div className="container-x">
         <SectionHead id="gallery-title" eyebrow="Gallery" title="Moments from the stage" as={asPage ? "h1" : "h2"} />
-        <div role="group" aria-label="Filter gallery" className="no-scrollbar -mx-[var(--gutter)] mt-8 flex gap-2 overflow-x-auto px-[var(--gutter)] pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
-          {filters.map((f) => (
-            <button key={f} type="button" aria-pressed={filter === f} onClick={() => changeFilter(f)}
-              className="min-h-[44px] rounded-full shrink-0 border border-white/12 px-5 text-sm font-medium text-ink-soft transition-colors hover:text-ink aria-pressed:border-white aria-pressed:bg-white aria-pressed:text-bg-deep">{f}</button>
-          ))}
+        <div
+          ref={filterStrip}
+          onScroll={updateFilterEdge}
+          role="group"
+          aria-label="Filter gallery"
+          className={`no-scrollbar -mx-[var(--gutter)] mt-8 overflow-x-auto pb-1 sm:mx-0 sm:overflow-visible ${hasMoreFilters ? "max-sm:[mask-image:linear-gradient(to_right,#000_calc(100%_-_1.75rem),transparent)]" : ""}`}
+        >
+          <div className="flex w-max gap-2 px-[var(--gutter)] sm:w-auto sm:flex-wrap sm:px-0">
+            {filters.map((f) => (
+              <button key={f} type="button" aria-pressed={filter === f} onClick={() => changeFilter(f)}
+                className="min-h-[44px] rounded-full shrink-0 border border-white/12 px-4 text-sm font-medium text-ink-soft transition-colors hover:text-ink aria-pressed:border-white aria-pressed:bg-white aria-pressed:text-bg-deep sm:px-5">{f}</button>
+            ))}
+          </div>
         </div>
         {shown.length > 0 ? (
           /* `relative` is required: popLayout pins leaving items with position:absolute against this container. */

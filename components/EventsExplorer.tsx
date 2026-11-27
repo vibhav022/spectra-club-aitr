@@ -18,7 +18,7 @@
 //       </div>
 //       <p className="sr-only" role="status" aria-live="polite">{shown.length} events shown</p>
 //       <h2 className="sr-only">Event list</h2>
-//       <ul className="mt-8 grid gap-5 md:grid-cols-2">
+//       <ul className="mt-5 grid gap-5 sm:mt-8 md:grid-cols-2">
 //         {shown.map((e, i) => <RevealItem as="li" key={e.slug} delay={(i % 2) * 0.07} className="list-none"><EventCard event={e} /></RevealItem>)}
 //       </ul>
 //     </>
@@ -31,9 +31,12 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { EventCard } from "./EventCard";
 import type { Event } from "@/content/events";
 import { RevealItem } from "./Reveal";
+
+const mobileSelectClass = "h-11 w-full min-w-0 appearance-none truncate rounded-xl border border-white/15 bg-bg-deep/80 py-0 pl-3 pr-8 text-base font-medium text-ink focus-visible:border-accent focus-visible:outline-none";
 
 function getEventYear(event: Event): number | null {
   if (typeof event.year === "number" && Number.isFinite(event.year)) {
@@ -79,8 +82,37 @@ export function EventsExplorer({ events }: { events: Event[] }) {
 
   return (
     <>
+      <div className="mt-6 grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2 sm:hidden">
+        <div className="relative min-w-0">
+          <select
+            aria-label="Event year"
+            className={mobileSelectClass}
+            value={selectedYear}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              setSelectedYear(value === "all" ? "all" : Number(value));
+            }}
+          >
+            <option value="all">All years</option>
+            {years.map((year) => <option key={year} value={year}>{year}</option>)}
+          </select>
+          <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
+        </div>
+        <div className="relative min-w-0">
+          <select
+            aria-label="Event category"
+            className={mobileSelectClass}
+            value={category}
+            onChange={(event) => setCategory(event.currentTarget.value)}
+          >
+            {categories.map((value) => <option key={value} value={value}>{value === "All" ? "All categories" : value}</option>)}
+          </select>
+          <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
+        </div>
+      </div>
+
       {/* YEAR TIMELINE */}
-      <div className="mt-9">
+      <div className="mt-9 hidden sm:block">
         <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-ink-soft">
           Explore by year
         </p>
@@ -152,7 +184,7 @@ export function EventsExplorer({ events }: { events: Event[] }) {
       <div
         role="group"
         aria-label="Filter events by category"
-        className="no-scrollbar -mx-[var(--gutter)] mt-7 flex gap-2 overflow-x-auto px-[var(--gutter)] pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+        className="mt-7 hidden flex-wrap gap-2 pb-1 sm:flex"
       >
         {categories.map((c) => (
           <button
@@ -178,7 +210,7 @@ export function EventsExplorer({ events }: { events: Event[] }) {
       <h2 className="sr-only">Event list</h2>
 
       {shown.length > 0 ? (
-        <ul className="mt-8 grid gap-5 md:grid-cols-2">
+        <ul className="mt-5 grid gap-5 sm:mt-8 md:grid-cols-2">
           {shown.map((event, i) => (
             <RevealItem
               as="li"
