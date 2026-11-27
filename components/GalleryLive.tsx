@@ -16,6 +16,7 @@ const toItem = (g: ApiGalleryItem): GalleryItem => ({
   alt: g.title,
   caption: g.caption ?? undefined,
   category: g.category,
+  event: g.event ?? undefined,
   kind: g.kind,
   src: mediaSrc(g.src),
   thumb: mediaSrc(g.thumb),
@@ -25,8 +26,11 @@ const toItem = (g: ApiGalleryItem): GalleryItem => ({
 
 /** Gallery page body: live photos/videos from the database. */
 function GalleryLiveContent() {
-  const searchParams = useSearchParams();
-  const eventSlug = searchParams.get("event");
+  const eventSlug = useSearchParams().get("event");
+  return <GalleryCollection key={eventSlug ?? ""} eventSlug={eventSlug} />;
+}
+
+function GalleryCollection({ eventSlug }: { eventSlug: string | null }) {
 
   const endpoint = eventSlug
     ? `/api/public/gallery?event=${encodeURIComponent(eventSlug)}`
@@ -67,7 +71,15 @@ function GalleryLiveContent() {
     );
   }
 
-  return <Gallery items={items} categories={categories} asPage />;
+  return (
+    <Gallery
+      items={items}
+      categories={categories}
+      albumTitle={eventSlug ? items.find((item) => item.event)?.event?.title ?? "Event photos and videos" : undefined}
+      groupByEvent={!eventSlug}
+      asPage
+    />
+  );
 }
 export function GalleryLive() {
   return (

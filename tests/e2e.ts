@@ -187,7 +187,13 @@ await test("unpublishing an event hides linked gallery items and revokes their p
   });
   eq(gallery.status, 201);
   const galleryUrl = `/api/public/gallery?event=${slug}`;
-  eq((await call(galleryUrl)).data.items.length, 1);
+  const album = (await call(galleryUrl)).data.items;
+  eq(album.length, 1);
+  eq(album[0].event, { slug, title: "Gallery visibility" });
+  const all = (await call("/api/public/gallery")).data.items;
+  eq(all.filter((item: { event: unknown }) => item.event).map((item: { event: unknown }) => item.event), [
+    { slug, title: "Gallery visibility" },
+  ]);
   eq((await call("/api/public/counts")).data.gallery, 3);
   for (const url of [item.url, thumb.url]) eq((await call(url)).status, 200);
   eq((await call(`/api/admin/catalogue-events/${event.data.item.id}`, {

@@ -4,8 +4,9 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { AnimatePresence, m, useReducedMotion, type Variants } from "framer-motion";
 import Link from "next/link";
-import { Expand, Play } from "lucide-react";
+import { ChevronLeft, Expand, Play } from "lucide-react";
 import { SectionHead } from "./SectionHead";
+import { GalleryAlbums } from "./GalleryAlbums";
 import { Slot } from "./Slot";
 import { Spot } from "./Spot";
 import { site, INSTAGRAM_HANDLE } from "@/content/site";
@@ -101,7 +102,7 @@ function Thumb({ it }: { it: GalleryItem }) {
 }
 
 
-export function Gallery({ items, categories = DEFAULT_CATEGORIES, limit, asPage = false }: { items: GalleryItem[]; categories?: string[]; limit?: number; asPage?: boolean }) {
+export function Gallery({ items, categories = DEFAULT_CATEGORIES, limit, asPage = false, albumTitle, groupByEvent = false }: { items: GalleryItem[]; categories?: string[]; limit?: number; asPage?: boolean; albumTitle?: string; groupByEvent?: boolean }) {
   const [filter, setFilter] = useState<Filter>(items.length ? "All" : "Recap");
   // Recap is a dedicated public view, not a second ordinary category chip.
   const normalCategories = categories.filter((category, index, all) =>
@@ -137,10 +138,25 @@ export function Gallery({ items, categories = DEFAULT_CATEGORIES, limit, asPage 
   const reduce = !!useReducedMotion();
   const wide = useWide();
   const showRecap = filter === "Recap";
-  const shown = useMemo(() => {
+  const filtered = useMemo(() => {
     const list = filter === "All" ? items : filter === "Recap" ? items.filter((item) => isRecapCategory(item.category)) : items.filter((i) => i.category === filter);
     return list.slice(0, limit);
   }, [items, filter, limit]);
+  const albums = useMemo(() => {
+    const groups = new Map<string, GalleryItem[]>();
+    if (!groupByEvent) return groups;
+
+    const matchingSlugs = new Set(filtered.flatMap((item) => item.event ? [item.event.slug] : []));
+    for (const item of items) {
+      if (!item.event || !matchingSlugs.has(item.event.slug)) continue;
+      const slug = item.event.slug;
+      const album = groups.get(slug);
+      if (album) album.push(item);
+      else groups.set(slug, [item]);
+    }
+    return groups;
+  }, [filtered, groupByEvent, items]);
+  const shown = useMemo(() => groupByEvent ? filtered.filter((item) => !item.event) : filtered, [filtered, groupByEvent]);
   const variants = useMemo(() => makeVariants(wide, reduce), [wide, reduce]);
   const openItem = openId === null ? undefined : shown.find((it) => galleryKey(it) === openId);
   // The open item left the current list (filter/data changed): close rather than show something else.
@@ -172,7 +188,13 @@ export function Gallery({ items, categories = DEFAULT_CATEGORIES, limit, asPage 
   return (
     <section id="gallery" aria-labelledby="gallery-title" className={`section-y border-b border-white/10 ${asPage ? "pt-32" : ""}`}>
       <div className="container-x">
-        <SectionHead id="gallery-title" eyebrow="Gallery" title="Moments from the stage" as={asPage ? "h1" : "h2"} />
+        {albumTitle && (
+          <Link href="/gallery/" className="mb-3 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-accent">
+            <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+            All albums
+          </Link>
+        )}
+        <SectionHead id="gallery-title" eyebrow="Gallery" title={albumTitle ?? "Moments from the stage"} as={asPage ? "h1" : "h2"} />
         <div
           ref={filterStrip}
           onScroll={updateFilterEdge}
@@ -187,6 +209,8 @@ export function Gallery({ items, categories = DEFAULT_CATEGORIES, limit, asPage 
             ))}
           </div>
         </div>
+        {albums.size > 0 && <GalleryAlbums albums={albums} />}
+        {albums.size > 0 && shown.length > 0 && <h2 className="mt-10 text-xl font-semibold text-ink">More photos and videos</h2>}
         {shown.length > 0 ? (
           /* `relative` is required: popLayout pins leaving items with position:absolute against this container. */
           <div ref={grid} style={{ minHeight: lockH }} className="relative mt-8 columns-2 gap-4 transition-[min-height] duration-500 ease-out lg:columns-3">
@@ -218,9 +242,9 @@ export function Gallery({ items, categories = DEFAULT_CATEGORIES, limit, asPage 
               })}
             </AnimatePresence>
           </div>
-        ) : (
+        ) : albums.size === 0 ? (
           <p className="mt-8 text-center text-sm text-ink-soft">No {showRecap ? "Recap photos or videos" : `${filter} photos or videos`} have been uploaded yet.</p>
-        )}
+        ) : null}
         <div className="mt-10 flex flex-wrap justify-center gap-3">
           {!showRecap && limit && items.length > limit && <Link href="/gallery" className="btn btn-primary">View full gallery</Link>}
           <a href={site.socials.instagram} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Follow us on Instagram {INSTAGRAM_HANDLE}</a>

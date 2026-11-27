@@ -23,14 +23,15 @@ publicApi.get("/gallery", async (c) => {
 
   const rows = (
     await c.env.DB.prepare(`
-      ${GALLERY_SELECT}
+      SELECT g.*, e.slug AS event_slug, e.title AS event_title
+      FROM (${GALLERY_SELECT}) g
       LEFT JOIN site_events e ON e.id = g.event_id
       WHERE ${publicGalleryItem}
       ${eventSlug ? "AND e.slug = ?" : ""}
       ORDER BY g.sort_order, g.created_at DESC
     `)
       .bind(...(eventSlug ? [eventSlug] : []))
-      .all<Parameters<typeof galleryShape>[0]>()
+      .all<Parameters<typeof galleryShape>[0] & { event_slug: string | null; event_title: string | null }>()
   ).results;
 
   const cats = (
@@ -48,6 +49,7 @@ publicApi.get("/gallery", async (c) => {
         title: s.title,
         caption: s.caption,
         category: s.category,
+        event: r.event_slug && r.event_title ? { slug: r.event_slug, title: r.event_title } : null,
         kind: s.kind,
         src: s.src,
         thumb: s.thumb,

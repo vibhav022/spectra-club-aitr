@@ -5,7 +5,7 @@ import { apiUrl } from "./api";
 export type Live<T> = { status: "loading" } | { status: "ok"; data: T } | { status: "error" };
 
 export interface ApiMember { id: string; name: string; role: string; tier: "leadership" | "core" | "faculty"; instagram?: string | null; linkedin?: string | null; bio?: string | null; specialization?: string | null; contributions?: string | null; department?: string | null; photo: string | null }
-export interface ApiGalleryItem { id: string; title: string; caption: string | null; category: string; kind: "image" | "video"; src: string; thumb: string | null; width: number; height: number }
+export interface ApiGalleryItem { id: string; title: string; caption: string | null; category: string; event?: { slug: string; title: string } | null; kind: "image" | "video"; src: string; thumb: string | null; width: number; height: number }
 export interface ApiNextEvent { id: string; title: string; slug: string | null; startsAt: string; venue: string | null; registrationUrl: string | null; ctaText: string }
 
 /**
